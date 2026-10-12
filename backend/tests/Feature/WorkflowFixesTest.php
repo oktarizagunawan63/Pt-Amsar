@@ -12,18 +12,19 @@ use App\Models\SalesFunnel;
 use App\Models\User;
 use App\Models\WorkLocation;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
  * Regression tests for the workflow/authorization fixes.
- * Runs against amsar_dashboard_test (schema copy), every test rolled back.
+ * Runs against amsar_dashboard_test, built from database/schema/mysql-schema.sql
+ * by RefreshDatabase (needs the mysql client on PATH); every test rolled back.
  */
 class WorkflowFixesTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private User $admin;
     private User $salesManager;

@@ -1,1 +1,6 @@
 frontend/node_modules.phpunit.result.cache
+
+# Secrets: copy .env.example to .env locally
+.env
+.env.backup
+.env.production

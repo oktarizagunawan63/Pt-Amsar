@@ -1,17 +1,17 @@
-/* Project Cards Professional Styling - Compact & Responsive */
+/* Project Cards - neutral surface, brand green for actions, red only for danger */
 
 .project-card {
-  background: white;
-  border-radius: 8px;
+  background: #ffffff;
+  border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  transition: all 0.2s ease;
-  border: 1px solid #b7cdc0;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  border: 1px solid #e5e7eb;
 }
 
 .project-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  transform: translateY(-1px);
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(16, 24, 40, 0.08);
 }
 
 .project-card-header {
@@ -23,15 +23,15 @@
 
 .project-card-title {
   font-size: 15px;
-  font-weight: 700;
-  color: #de168c;
+  font-weight: 600;
+  color: #111827;
   margin: 0 0 4px 0;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 .project-card-location {
-  font-size: 11px;
-  color: #5a9844;
+  font-size: 12px;
+  color: #6b7280;
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -46,7 +46,7 @@
 
 .project-card-divider {
   height: 1px;
-  background: #b7cdc0;
+  background: #f3f4f6;
   margin: 12px 0;
 }
 
@@ -62,29 +62,30 @@
 }
 
 .project-card-progress-label {
-  font-size: 11px;
-  color: #de168c;
+  font-size: 12px;
+  color: #6b7280;
   margin: 0;
 }
 
 .project-card-progress-value {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  color: #237043;
+  color: #111827;
   margin: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .project-card-progress-bar {
-  height: 5px;
-  background: #b7cdc0;
-  border-radius: 3px;
+  height: 6px;
+  background: #f3f4f6;
+  border-radius: 999px;
   overflow: hidden;
 }
 
 .project-card-progress-fill {
   height: 100%;
   background: #237043;
-  border-radius: 3px;
+  border-radius: 999px;
   transition: width 0.3s ease;
 }
 
@@ -96,46 +97,49 @@
 }
 
 .project-card-info-item {
-  background: #f3faf1;
-  border-radius: 6px;
-  padding: 8px;
+  background: #f9fafb;
+  border: 1px solid #f3f4f6;
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 
 .project-card-info-label {
   font-size: 10px;
-  color: #de168c;
+  font-weight: 500;
+  color: #6b7280;
   margin: 0 0 3px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .project-card-info-value {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: #2f3b33;
+  color: #111827;
   margin: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .project-card-info-value.over-budget {
-  color: #d54496;
+  color: #dc2626;
 }
 
 .project-card-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 8px;
-  border-top: 1px solid #b7cdc0;
+  padding-top: 10px;
+  border-top: 1px solid #f3f4f6;
   margin-bottom: 12px;
-  font-size: 11px;
-  color: #de168c;
+  font-size: 12px;
+  color: #6b7280;
 }
 
 .project-card-pm {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 120px;
+  max-width: 140px;
 }
 
 .project-card-deadline {
@@ -152,69 +156,74 @@
 .project-card-btn {
   flex: 1;
   min-width: 0;
-  padding: 6px 8px;
-  border-radius: 6px;
-  font-size: 11px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  font-size: 12px;
   font-weight: 500;
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
 }
 
 .project-card-btn-primary {
-  background: #5a9844;
+  background: #237043;
   color: white;
 }
 
 .project-card-btn-primary:hover {
-  background: #237043;
+  background: #1c5a36;
 }
 
 .project-card-btn-secondary {
   background: white;
-  color: #237043;
-  border: 1px solid #b7cdc0;
+  color: #374151;
+  border: 1px solid #e5e7eb;
 }
 
 .project-card-btn-secondary:hover {
-  background: #f3faf1;
-  border-color: #a4ca9a;
+  background: #f9fafb;
+  border-color: #d1d5db;
 }
 
 .project-card-btn-secondary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background: #b7cdc0;
-  color: #a4ca9a;
+  background: #f3f4f6;
+  color: #9ca3af;
 }
 
+/* Destructive: quiet until hovered, so it doesn't compete with the main action */
 .project-card-btn-danger {
-  background: #f399cc;
-  color: #d54496;
-  border: 1px solid #f399cc;
+  flex: 0 0 auto;
+  padding-left: 10px;
+  padding-right: 10px;
+  background: white;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
 }
 
 .project-card-btn-danger:hover {
-  background: #f399cc;
-  border-color: #de168c;
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
 }
 
 .project-card-confirm {
-  background: #f3faf1;
-  border: 1px solid #b7cdc0;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 12px;
   margin-top: 12px;
 }
 
 .project-card-confirm-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  color: #de168c;
+  color: #111827;
   margin: 0 0 8px 0;
 }
 
@@ -225,32 +234,32 @@
 
 .project-card-confirm-btn {
   flex: 1;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 11px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 12px;
   font-weight: 500;
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease;
 }
 
 .project-card-confirm-btn-yes {
-  background: #5a9844;
+  background: #237043;
   color: white;
 }
 
 .project-card-confirm-btn-yes:hover {
-  background: #237043;
+  background: #1c5a36;
 }
 
 .project-card-confirm-btn-no {
   background: white;
-  color: #237043;
-  border: 1px solid #a4ca9a;
+  color: #374151;
+  border: 1px solid #e5e7eb;
 }
 
 .project-card-confirm-btn-no:hover {
-  background: #f3faf1;
+  background: #f3f4f6;
 }
 
 /* Grid Layout - More Compact */
@@ -345,20 +354,21 @@
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #f3faf1;
+  background: #f9fafb;
+  border: 1px solid #f3f4f6;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .project-history-item:hover {
-  background: #b7cdc0;
+  background: #f3f4f6;
 }
 
 .project-history-icon {
   width: 32px;
   height: 32px;
-  background: #f3faf1;
+  background: #eef7f1;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -374,13 +384,13 @@
 .project-history-title {
   font-size: 14px;
   font-weight: 600;
-  color: #237043;
+  color: #111827;
   margin: 0 0 4px 0;
 }
 
 .project-history-meta {
   font-size: 12px;
-  color: #5a9844;
+  color: #6b7280;
   margin: 0;
 }
 
@@ -392,13 +402,13 @@
 .project-history-progress-value {
   font-size: 12px;
   font-weight: 600;
-  color: #5a9844;
+  color: #6b7280;
   margin: 0 0 4px 0;
 }
 
 .project-history-progress-date {
   font-size: 12px;
-  color: #5a9844;
+  color: #6b7280;
   margin: 0;
 }
 
@@ -409,12 +419,12 @@
 
 .project-history-budget-value {
   font-size: 12px;
-  color: #237043;
+  color: #111827;
   margin: 0 0 4px 0;
 }
 
 .project-history-budget-total {
   font-size: 12px;
-  color: #5a9844;
+  color: #6b7280;
   margin: 0;
 }

@@ -31,6 +31,24 @@ function sendNotif($userId, $type, $title, $message, $metadata = null) {
 
 class SalesFunnelController extends Controller
 {
+    private const SALES_ROLES = ['administrator', 'admin', 'sales_manager', 'sales'];
+    private const SORTABLE = ['created_at', 'updated_at', 'target_close_date', 'estimated_value', 'customer_name', 'deal_stage', 'win_percentage'];
+
+    /**
+     * Funnel is a sales pipeline: engineering roles have no business here.
+     */
+    private function denyNonSales($user)
+    {
+        if (in_array($user?->role, self::SALES_ROLES, true)) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Akses ditolak. Sales funnel hanya untuk tim sales.'
+        ], 403);
+    }
+
     /**
      * Get funnels list with filters
      */
@@ -38,6 +56,7 @@ class SalesFunnelController extends Controller
     {
         try {
             $user = Auth::user();
+            if ($denied = $this->denyNonSales($user)) return $denied;
             $query = SalesFunnel::with(['customer', 'assignedUser', 'creator', 'activities']);
             
             // Access control
@@ -96,7 +115,10 @@ class SalesFunnelController extends Controller
             
             // Sort
             $sortBy = $request->get('sort_by', 'created_at');
-            $sortOrder = $request->get('sort_order', 'desc');
+            $sortOrder = strtolower($request->get('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
+            if (!in_array($sortBy, ['deadline_terdekat', 'last_update'], true) && !in_array($sortBy, self::SORTABLE, true)) {
+                $sortBy = 'created_at';
+            }
             
             if ($sortBy === 'deadline_terdekat') {
                 $query->orderBy('target_close_date', 'asc');
@@ -129,6 +151,7 @@ class SalesFunnelController extends Controller
     {
         try {
             $user = Auth::user();
+            if ($denied = $this->denyNonSales($user)) return $denied;
             $query = SalesFunnel::query();
             
             // Access control
@@ -154,18 +177,21 @@ class SalesFunnelController extends Controller
                 ->whereBetween('won_date', [$startOfMonth, $endOfMonth])
                 ->sum('estimated_value');
             
-            // Win Rate Bulan Ini
-            $totalClosedThisMonth = (clone $query)
-                ->whereIn('status', ['won', 'lost'])
-                ->whereBetween('updated_at', [$startOfMonth, $endOfMonth])
-                ->count();
-            
+            // Win Rate Bulan Ini = won / (won + lost) closed this month, both by their closing date.
+            // (updated_at is not a closing date: any edit to an old deal would skew it.)
             $totalWonThisMonth = (clone $query)
                 ->where('status', 'won')
                 ->whereBetween('won_date', [$startOfMonth, $endOfMonth])
                 ->count();
-            
-            $winRate = $totalClosedThisMonth > 0 
+
+            $totalLostThisMonth = (clone $query)
+                ->where('status', 'lost')
+                ->whereBetween('lost_date', [$startOfMonth, $endOfMonth])
+                ->count();
+
+            $totalClosedThisMonth = $totalWonThisMonth + $totalLostThisMonth;
+
+            $winRate = $totalClosedThisMonth > 0
                 ? round(($totalWonThisMonth / $totalClosedThisMonth) * 100, 1)
                 : 0;
             
@@ -194,6 +220,7 @@ class SalesFunnelController extends Controller
     {
         try {
             $user = Auth::user();
+            if ($denied = $this->denyNonSales($user)) return $denied;
             
             $validator = Validator::make($request->all(), [
                 'customer_id' => 'nullable|exists:customers,id',
@@ -304,6 +331,7 @@ class SalesFunnelController extends Controller
     {
         try {
             $user = Auth::user();
+            if ($denied = $this->denyNonSales($user)) return $denied;
             $funnel = SalesFunnel::with(['customer', 'assignedUser', 'creator', 'activities.creator'])
                 ->findOrFail($id);
             
@@ -351,6 +379,7 @@ class SalesFunnelController extends Controller
     {
         try {
             $user = Auth::user();
+            if ($denied = $this->denyNonSales($user)) return $denied;
             $funnel = SalesFunnel::findOrFail($id);
             
             // Access control - administrator can edit all including won/lost
@@ -458,6 +487,7 @@ class SalesFunnelController extends Controller
     {
         try {
             $user = Auth::user();
+            if ($denied = $this->denyNonSales($user)) return $denied;
             
             if (!in_array($user->role, ['administrator', 'sales_manager'])) {
                 return response()->json([
@@ -490,6 +520,7 @@ class SalesFunnelController extends Controller
     {
         try {
             $user = Auth::user();
+            if ($denied = $this->denyNonSales($user)) return $denied;
             $funnel = SalesFunnel::findOrFail($id);
             
             // Access control - administrator bypass
@@ -510,7 +541,7 @@ class SalesFunnelController extends Controller
             $validator = Validator::make($request->all(), [
                 'won_reason_category' => 'required|in:harga_kompetitif,relasi,spesifikasi,after_sales,pengiriman,lainnya',
                 'won_notes' => 'nullable|string',
-                'won_date' => 'required|date'
+                'won_date' => 'required|date|before_or_equal:today'
             ]);
             
             if ($validator->fails()) {
@@ -525,46 +556,53 @@ class SalesFunnelController extends Controller
             $data['status'] = 'won';
             $data['deal_stage'] = 'closing';
             $data['won_value'] = $funnel->estimated_value; // Use estimated value as won value
-            
-            $funnel->update($data);
-            
-            // Log activity
-            $notesText = $data['won_notes'] ? ". Notes: {$data['won_notes']}" : "";
-            FunnelActivity::create([
-                'funnel_id' => $funnel->id,
-                'activity_type' => 'lainnya',
-                'activity_date' => now(),
-                'notes' => "Deal WON! Reason: {$data['won_reason_category']}{$notesText}",
-                'created_by' => $user->id
-            ]);
 
-            // Auto-create project for Site Manager dashboard
             $segmentLabel = strtoupper($funnel->segment ?? 'Umum');
             $projectName = "[FUNNEL] {$funnel->customer_company} - {$segmentLabel}";
-            $descriptionNotes = $data['won_notes'] ? "\nCatatan: {$data['won_notes']}" : "";
+            $descriptionNotes = !empty($data['won_notes']) ? "\nCatatan: {$data['won_notes']}" : "";
             $siteManager = User::where('role', 'site_manager')
                 ->where('is_active', true)
                 ->orderBy('id')
                 ->first();
+            // Without a site manager the project goes to an administrator, never to the salesperson.
+            $owner = $siteManager ?? User::where('role', 'administrator')->where('is_active', true)->orderBy('id')->first() ?? $user;
 
-            $project = Project::create([
-                'name'        => $projectName,
-                'description' => "Proyek dari Sales Funnel (WON).\nCustomer: {$funnel->customer_name}\nSegment: {$segmentLabel}\nNilai Estimasi: Rp " . number_format($funnel->estimated_value, 0, ',', '.') . $descriptionNotes,
-                'location'    => $funnel->city ?? '-',
-                'status'      => 'on_track',
-                'start_date'  => now()->toDateString(),
-                'end_date'    => $funnel->target_close_date ?? now()->addMonths(3)->toDateString(),
-                'budget'      => $funnel->estimated_value,
-                'budget_realisasi' => 0,
-                'progress'    => 0,
-                'pm_name'     => $siteManager?->name,
-                'pm_email'    => $siteManager?->email,
-                'project_manager_id' => $siteManager?->id ?? $user->id,
-                'site_manager_id' => $siteManager?->id,
-                'created_by' => $user->id,
-                'user_id' => $user->id,
-                'assigned_engineers' => [],
-            ]);
+            // Funnel WON + project creation are one business event: all or nothing.
+            $project = \DB::transaction(function () use ($funnel, $data, $user, $projectName, $segmentLabel, $descriptionNotes, $siteManager, $owner) {
+                $funnel->update($data);
+
+                $notesText = !empty($data['won_notes']) ? ". Notes: {$data['won_notes']}" : "";
+                FunnelActivity::create([
+                    'funnel_id' => $funnel->id,
+                    'activity_type' => 'lainnya',
+                    'activity_date' => now(),
+                    'notes' => "Deal WON! Reason: {$data['won_reason_category']}{$notesText}",
+                    'created_by' => $user->id
+                ]);
+
+                // target_close_date is when the DEAL was supposed to close, not when the
+                // project ends, so it can't be the project deadline. Default 3 months; SM adjusts.
+                $endDate = now()->addMonths(3)->toDateString();
+
+                return Project::create([
+                    'name'        => $projectName,
+                    'description' => "Proyek dari Sales Funnel (WON).\nCustomer: {$funnel->customer_name}\nSegment: {$segmentLabel}\nNilai Estimasi: Rp " . number_format($funnel->estimated_value, 0, ',', '.') . $descriptionNotes,
+                    'location'    => $funnel->city ?? '-',
+                    'status'      => Project::statusFor($endDate, 0),
+                    'start_date'  => now()->toDateString(),
+                    'end_date'    => $endDate,
+                    'rab'         => $funnel->estimated_value,
+                    'rab_realisasi' => 0,
+                    'progress'    => 0,
+                    'pm_name'     => $owner->name,
+                    'pm_email'    => $owner->email,
+                    'project_manager_id' => $owner->id,
+                    'site_manager_id' => $siteManager?->id,
+                    'created_by' => $user->id,
+                    'user_id' => $user->id,
+                    'assigned_engineers' => [],
+                ]);
+            });
 
             // Notify Sales Manager, Admin, Site Manager about WON + new project
             $notifyRoles = User::whereIn('role', ['sales_manager', 'administrator', 'site_manager'])->get();
@@ -606,6 +644,7 @@ class SalesFunnelController extends Controller
     {
         try {
             $user = Auth::user();
+            if ($denied = $this->denyNonSales($user)) return $denied;
             $funnel = SalesFunnel::findOrFail($id);
             
             // Access control
@@ -627,7 +666,7 @@ class SalesFunnelController extends Controller
                 'lost_reason_category' => 'required|in:kalah_harga,kalah_spesifikasi,kalah_kompetitor,budget_dipotong,proyek_ditunda,customer_batal,lainnya',
                 'lost_competitor' => 'required_if:lost_reason_category,kalah_kompetitor|nullable|string',
                 'lost_notes' => 'nullable|string',
-                'lost_date' => 'required|date'
+                'lost_date' => 'required|date|before_or_equal:today'
             ]);
             
             if ($validator->fails()) {
@@ -644,7 +683,7 @@ class SalesFunnelController extends Controller
             $funnel->update($data);
             
             // Log activity
-            $notesText = $data['lost_notes'] ? ". Notes: {$data['lost_notes']}" : "";
+            $notesText = !empty($data['lost_notes']) ? ". Notes: {$data['lost_notes']}" : "";
             FunnelActivity::create([
                 'funnel_id' => $funnel->id,
                 'activity_type' => 'lainnya',
@@ -686,6 +725,7 @@ class SalesFunnelController extends Controller
     {
         try {
             $user = Auth::user();
+            if ($denied = $this->denyNonSales($user)) return $denied;
             
             // Get customers that have been visited
             // Join with plan_visits and realisasi_visits to find visited customers

@@ -30,14 +30,16 @@ function sendVisitNotif($userId, $type, $title, $message) {
 
 class RealisasiVisitController extends Controller
 {
-    private function deleteOrphanUnplannedVisits(): void
+    private function denyNonSales($user)
     {
-        RealisasiVisit::where('type', 'unplanned')
-            ->where(function ($query) {
-                $query->whereNull('customer_id')
-                    ->orWhereDoesntHave('directCustomer');
-            })
-            ->delete();
+        if (in_array($user?->role, ['administrator', 'admin', 'sales_manager', 'sales'], true)) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Akses ditolak. Visit tracking bukan urusan role Anda.'
+        ], 403);
     }
 
     /**
@@ -47,8 +49,6 @@ class RealisasiVisitController extends Controller
     public function index(Request $request)
     {
         try {
-            $this->deleteOrphanUnplannedVisits();
-
             $user = Auth::user();
             
             // Block Site Manager and Engineer from accessing visit tracking
@@ -113,8 +113,6 @@ class RealisasiVisitController extends Controller
     public function getMyUnplannedVisits(Request $request)
     {
         try {
-            $this->deleteOrphanUnplannedVisits();
-
             $user = Auth::user();
             
             // Show all approval states so sales can track pending/rejected submissions.
@@ -189,13 +187,20 @@ class RealisasiVisitController extends Controller
             // Check if plan visit exists and user has permission
             $planVisit = PlanVisit::findOrFail($request->plan_visit_id);
             $user = Auth::user();
-            
+
             // Allow if user is assigned to the visit OR is sales_manager/administrator
-            if ($user->role === 'sales' && $planVisit->assigned_to !== $user->id) {
+            if ($user->role === 'sales' && (int) $planVisit->assigned_to !== (int) $user->id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to complete this visit'
                 ], 403);
+            }
+
+            if ($planVisit->status !== 'approved') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Plan visit belum/tidak di-approve, tidak bisa direalisasi'
+                ], 422);
             }
             
             // Check if realisasi already exists
@@ -218,7 +223,8 @@ class RealisasiVisitController extends Controller
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
                 'photos' => $request->photos,
-                'visited_by' => $request->visited_by ?: Auth::id(),
+                // Sales can't attribute a visit to someone else.
+                'visited_by' => $user->role === 'sales' ? $user->id : ($request->visited_by ?: Auth::id()),
             ]);
             
             // NOTIFIKASI: beri tahu Sales Manager bahwa visit selesai
@@ -333,13 +339,22 @@ class RealisasiVisitController extends Controller
         try {
             $planVisit = PlanVisit::findOrFail($planVisitId);
             $user = Auth::user();
-            
+            if ($denied = $this->denyNonSales($user)) return $denied;
+
             // Check permission
-            if ($user->role === 'sales' && $planVisit->assigned_to !== $user->id) {
+            if ($user->role === 'sales' && (int) $planVisit->assigned_to !== (int) $user->id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to mark this visit as missed'
                 ], 403);
+            }
+
+            // A visit can only be "terlewat" once its scheduled day has arrived.
+            if ($planVisit->tanggal_visit && \Carbon\Carbon::parse($planVisit->tanggal_visit)->startOfDay()->isFuture()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Visit belum jatuh tempo, belum bisa ditandai terlewat. Gunakan reschedule jika perlu.'
+                ], 422);
             }
             
             // Check if realisasi already exists
@@ -418,7 +433,8 @@ class RealisasiVisitController extends Controller
     {
         try {
             $user = Auth::user();
-            
+            if ($denied = $this->denyNonSales($user)) return $denied;
+
             // Get plan visits that don't have realisasi yet (pending to be visited)
             $query = PlanVisit::with(['customer', 'assignedUser'])
                 ->whereDoesntHave('realisasiVisit')
@@ -462,12 +478,9 @@ class RealisasiVisitController extends Controller
             $validator = Validator::make($request->all(), [
                 // Explicitly nullable for unplanned visits
                 'plan_visit_id' => 'nullable|exists:plan_visits,id',
-                // Customer can be either existing (customer_id) or new (customer_name, etc)
-                'customer_id' => 'nullable|exists:customers,id',
-                'customer_name' => 'required_without:customer_id|string|min:3',
-                'customer_company' => 'required_without:customer_id|string|min:3',
-                'customer_phone' => 'required_without:customer_id|string|min:10',
-                'customer_address' => 'nullable|string',
+                // Must be an existing customer: a visit without a customer record is
+                // invisible in every history list and can never become a funnel.
+                'customer_id' => 'required|exists:customers,id',
                 // Visit data
                 'visit_date' => 'required|date|before_or_equal:today',
                 'visit_time' => 'required',
@@ -493,23 +506,19 @@ class RealisasiVisitController extends Controller
             
             $user = Auth::user();
             
-            // Get customer data
-            $customerId = $request->customer_id;
-            $customerName = $request->customer_name;
-            $customerCompany = $request->customer_company;
-            $customerPhone = $request->customer_phone;
-            $customerAddress = $request->customer_address;
-            
-            // If customer_id is provided, get customer data from database
-            if ($customerId) {
-                $customer = \App\Models\Customer::find($customerId);
-                if ($customer) {
-                    $customerName = $customer->name;
-                    $customerCompany = $customer->company;
-                    $customerPhone = $customer->phone;
-                    $customerAddress = $customer->address;
-                }
+            $customer = \App\Models\Customer::find($request->customer_id);
+            if ($customer->approval_status !== 'approved') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Customer belum di-approve, pilih customer yang sudah di-approve'
+                ], 422);
             }
+
+            $customerId = $customer->id;
+            $customerName = $customer->name;
+            $customerCompany = $customer->company;
+            $customerPhone = $customer->phone;
+            $customerAddress = $customer->address;
             
             // Determine approval status based on role
             // Sales creates pending unplanned visits that need approval
@@ -711,8 +720,6 @@ class RealisasiVisitController extends Controller
     public function pendingUnplanned()
     {
         try {
-            $this->deleteOrphanUnplannedVisits();
-
             $user = Auth::user();
             
             $query = RealisasiVisit::with(['directCustomer', 'visitor'])

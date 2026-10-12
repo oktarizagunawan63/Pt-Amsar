@@ -332,7 +332,12 @@ export default function ProjectDetailPage() {
   }
 
   const handleComplete = async () => {
-    await markComplete(id, completeNote)
+    try {
+      await markComplete(id, completeNote)
+    } catch (error) {
+      toast.error(error.message || 'Gagal menandai proyek selesai')
+      return
+    }
     addHist({ action: 'Proyek Selesai', detail: `Selesai${completeNote ? ' - ' + completeNote : ''}`, user: currentUser, type: 'selesai' })
     toast.success('Proyek ditandai selesai')
     fetchProject()
@@ -467,14 +472,14 @@ export default function ProjectDetailPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="card text-center">
-          <p className="text-xs text-[#de168c] mb-1">Progress</p>
+          <p className="text-xs text-gray-500 mb-1">Progress</p>
           <p className="text-xl font-bold text-gray-900 mb-2">
             {isCompleted ? '100%' : `${progressVal}%`}</p>
           <p className="text-xs text-gray-400 mt-0.5">{materials.length} material</p>
         </div>
 
         <div className="card text-center">
-          <p className="text-xs text-[#de168c] mb-1">RAB Terealisasi</p>
+          <p className="text-xs text-gray-500 mb-1">RAB Terealisasi</p>
           <p className={`text-xl font-bold ${isRabOver ? 'text-red-600' : 'text-gray-900'}`}>{formatRupiah(rabUsed)}</p>
           <p className="text-xs text-gray-400 mt-0.5">
             {isRabOver ? `Over ${formatRupiah(Math.abs(rabRemaining))}` : `Sisa ${formatRupiah(rabRemaining)}`}
@@ -493,7 +498,7 @@ export default function ProjectDetailPage() {
         </div>
 
         <div className="card text-center">
-          <p className="text-xs text-[#de168c] mb-1">Teknisi yang Bekerja</p>
+          <p className="text-xs text-gray-500 mb-1">Teknisi yang Bekerja</p>
           <p className="text-xl font-bold text-gray-900">
             {users.filter(u => u.role === 'engineer' && u.is_active !== false).length} Orang
           </p>
@@ -501,7 +506,7 @@ export default function ProjectDetailPage() {
         </div>
 
         <div className="card text-center">
-          <p className="text-xs text-[#de168c] mb-1">Sisa Waktu</p>
+          <p className="text-xs text-gray-500 mb-1">Sisa Waktu</p>
           <p className="text-xl font-bold text-gray-900 mb-2">
             {remainingTimeValue}
           </p>
@@ -540,7 +545,7 @@ export default function ProjectDetailPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-sm font-semibold text-[#de168c] mb-3">Project Information</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Project Information</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-500">Description:</span>
@@ -561,7 +566,7 @@ export default function ProjectDetailPage() {
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-[#de168c] mb-3">Quick Stats</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Quick Stats</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-500">Progress:</span>
@@ -586,7 +591,7 @@ export default function ProjectDetailPage() {
               {/* Material Terpasang in Overview */}
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-[#de168c]">Material Terpasang</h3>
+                  <h3 className="text-sm font-semibold text-gray-900">Material Terpasang</h3>
                   {!isCompleted && canAddMaterial && <button onClick={() => setAddMatOpen(true)} className="flex items-center gap-1.5 text-xs text-[#237043] hover:underline"><Plus size={13}/> Tambah Material</button>}
                 </div>
                 <div className="space-y-3">
@@ -626,7 +631,7 @@ export default function ProjectDetailPage() {
           {activeTab === 'engineers' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-[#de168c]">Assigned Engineers</h3>
+                <h3 className="text-sm font-semibold text-gray-900">Assigned Engineers</h3>
                 {!isCompleted && canManageProject && (
                   <button onClick={handleOpenTeamModal} className="flex items-center gap-1.5 text-xs text-[#237043] hover:underline">
                     <Plus size={13}/> Assign Engineer
@@ -670,7 +675,7 @@ export default function ProjectDetailPage() {
           {activeTab === 'progress' && (
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-[#de168c]">Progress Reports</h3>
+                  <h3 className="text-sm font-semibold text-gray-900">Progress Reports</h3>
                   {!isCompleted && canSubmitProjectProgress && (
                     <button onClick={() => setShowProgressModal(true)} className="flex items-center gap-1.5 text-xs text-[#237043] hover:underline">
                       <Plus size={13}/> Add Report
@@ -688,7 +693,7 @@ export default function ProjectDetailPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-sm font-semibold text-[#de168c]">Project Documents</h3>
+                  <h3 className="text-sm font-semibold text-gray-900">Project Documents</h3>
                   <div className="flex gap-1">
                     {['semua','foto','laporan'].map(tab => (
                       <button key={tab} onClick={() => setDocTab(tab)}

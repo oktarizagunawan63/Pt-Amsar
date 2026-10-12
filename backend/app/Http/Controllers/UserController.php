@@ -21,6 +21,28 @@ class UserController extends Controller
         };
     }
 
+    /**
+     * Administrator manages everyone; managers only manage their own subordinates.
+     */
+    private function canManageUser(?User $actor, User $target): bool
+    {
+        if (!$actor) {
+            return false;
+        }
+
+        return match ($actor->role) {
+            'administrator', 'admin' => true,
+            'sales_manager' => $target->role === 'sales',
+            'site_manager' => $target->role === 'engineer',
+            default => false,
+        };
+    }
+
+    private function forbidden(string $message = 'Tidak memiliki izin untuk mengelola user ini')
+    {
+        return response()->json(['message' => $message], 403);
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -68,13 +90,43 @@ class UserController extends Controller
         return response()->json($this->format($user->loadMissing('approver:id,name')));
     }
 
+    /**
+     * Public self-registration: account stays inactive until approved,
+     * and nobody can self-register as administrator.
+     */
     public function register(Request $request)
     {
-        return $this->store($request);
+        $data = $request->validate([
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users',
+            'password' => 'required|string|min:8',
+            'role'     => 'required|in:sales_manager,sales,site_manager,engineer',
+        ]);
+
+        $user = User::create([
+            'name'              => $data['name'],
+            'email'             => $data['email'],
+            'password'          => Hash::make($data['password']),
+            'role'              => $data['role'],
+            'division'          => $this->expectedDivisionForRole($data['role']),
+            'is_active'         => false,
+            'status'            => 'pending',
+            'assigned_projects' => [],
+        ]);
+
+        return response()->json([
+            'message' => 'Registrasi berhasil. Akun Anda menunggu persetujuan administrator.',
+            'user' => $this->format($user),
+        ], 201);
     }
 
     public function store(Request $request)
     {
+        $currentUser = $request->user();
+        if (!in_array($currentUser?->role, ['administrator', 'admin'], true)) {
+            return $this->forbidden('Hanya administrator yang dapat menambahkan user');
+        }
+
         $data = $request->validate([
             'name'     => 'required|string|max:255',
             'email'    => 'required|email|unique:users',
@@ -122,6 +174,18 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
+        $currentUser = $request->user();
+        $isAdmin = in_array($currentUser?->role, ['administrator', 'admin'], true);
+
+        if (!$this->canManageUser($currentUser, $user)) {
+            return $this->forbidden();
+        }
+
+        // Role & division changes are an administrator decision only.
+        if (!$isAdmin && ($request->has('role') || $request->has('division'))) {
+            return $this->forbidden('Hanya administrator yang dapat mengubah role user');
+        }
+
         $data = $request->validate([
             'name'      => 'sometimes|string|max:255',
             'role'      => 'sometimes|in:administrator,admin,site_manager,sales_manager,sales,engineer',
@@ -196,13 +260,8 @@ class UserController extends Controller
             return response()->json(['message' => 'Akun administrator tidak bisa dihapus'], 403);
         }
         
-        // Only administrator can delete users, or sales_manager can delete sales/engineers
-        if ($currentUser->role === 'sales_manager' && !in_array($user->role, ['engineer', 'sales'])) {
-            return response()->json(['message' => 'Sales manager hanya bisa menghapus engineer dan sales'], 403);
-        }
-        
-        if (!in_array($currentUser->role, ['administrator', 'sales_manager', 'site_manager'])) {
-            return response()->json(['message' => 'Tidak memiliki izin untuk menghapus user'], 403);
+        if (!$this->canManageUser($currentUser, $user)) {
+            return $this->forbidden('Tidak memiliki izin untuk menghapus user ini');
         }
         
         // Prevent self-deletion
@@ -330,12 +389,8 @@ class UserController extends Controller
         // Check permission: administrator can approve all, sales_manager can approve engineers only
         $currentUser = $request->user();
         
-        if ($currentUser->role === 'sales_manager' && !in_array($user->role, ['engineer', 'sales'])) {
-            return response()->json(['message' => 'Sales manager hanya bisa menyetujui engineer dan sales'], 403);
-        }
-        
-        if (!in_array($currentUser->role, ['administrator', 'sales_manager', 'site_manager'])) {
-            return response()->json(['message' => 'Tidak memiliki izin untuk menyetujui user'], 403);
+        if (!$this->canManageUser($currentUser, $user)) {
+            return $this->forbidden('Tidak memiliki izin untuk menyetujui user ini');
         }
 
         $user->update([
@@ -383,12 +438,8 @@ class UserController extends Controller
         // Check permission: administrator can reject all, sales_manager can reject engineers only
         $currentUser = $request->user();
         
-        if ($currentUser->role === 'sales_manager' && !in_array($user->role, ['engineer', 'sales'])) {
-            return response()->json(['message' => 'Sales manager hanya bisa menolak engineer dan sales'], 403);
-        }
-        
-        if (!in_array($currentUser->role, ['administrator', 'sales_manager', 'site_manager'])) {
-            return response()->json(['message' => 'Tidak memiliki izin untuk menolak user'], 403);
+        if (!$this->canManageUser($currentUser, $user)) {
+            return $this->forbidden('Tidak memiliki izin untuk menolak user ini');
         }
 
         $user->update([
@@ -414,6 +465,10 @@ class UserController extends Controller
 
     public function assignProject(Request $request, User $user)
     {
+        if (!$this->canManageUser($request->user(), $user) || $user->role !== 'engineer') {
+            return $this->forbidden('Hanya bisa meng-assign proyek ke engineer yang Anda kelola');
+        }
+
         $request->validate(['project_id' => 'required|string']);
         $projectId = (string)$request->project_id;
         

@@ -1,574 +1,400 @@
-import { useEffect, useState } from 'react'
-import { TrendingUp, DollarSign, Package, Clock, Users, CheckCircle, XCircle, Calendar } from '@icons'
-import { useNavigate } from 'react-router-dom'
-import ProgressBar from '../components/kpi/ProgressBar'
-import Badge from '../components/ui/Badge'
-import WelcomeCard from '../components/ui/WelcomeCard'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  AlertCircle, AlertTriangle, CheckCircle, Clock, FolderKanban, Plus,
+  RefreshCw, UserCheck, Users, Wallet, Activity, TrendingUp,
+} from '@icons'
 import useAppStore from '../store/appStore'
 import useAuthStore from '../store/authStore'
 import useUserStore from '../store/userStore'
-import { formatRupiah } from '../lib/formatRupiah'
-import { filterProjectsByRole } from '../lib/permissions'
+import { can, filterProjectsByRole } from '../lib/permissions'
 import { api } from '../lib/api'
+import {
+  PageHeader, SectionCard, CardLink, StatTile, Meter, StatusBadge, EmptyState, SkeletonBlock,
+  formatRupiahCompact, formatDate, daysUntil, relativeDeadline, relativeTime,
+} from '../components/dashboard/DashboardUI'
 
-const statusMap = {
-  on_track:  { label: 'On Track',  variant: 'success' },
-  at_risk:   { label: 'At Risk',   variant: 'warning' },
-  delayed:   { label: 'Delayed',   variant: 'danger' },
-  completed: { label: 'Selesai',   variant: 'info' },
-}
+const STATUS_RANK = { delayed: 0, at_risk: 1, on_track: 2 }
+const TABLE_LIMIT = 8
+
+const todayLabel = () => new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const projects = useAppStore(state => state.projects)
   const { user } = useAuthStore()
   const { users } = useUserStore()
+  const projects = useAppStore(state => state.projects)
+  const projectsLoading = useAppStore(state => state.projectsLoading)
+  const fetchProjects = useAppStore(state => state.fetchProjects)
+
+  const isAdmin = user?.role === 'administrator' || user?.role === 'direktur'
   const [filterSM, setFilterSM] = useState('all')
-  const [showWelcome, setShowWelcome] = useState(false)
-  const [attendanceSummary, setAttendanceSummary] = useState(null)
-  const [dashboardStats, setDashboardStats] = useState(null)
-  const [dataError, setDataError] = useState(false)
+  const [stats, setStats] = useState(null)
+  const [attendance, setAttendance] = useState(null)
+  const [loadError, setLoadError] = useState(false)
 
-  useEffect(() => { 
-    loadDashboardData()
-    
-    // Auto-refresh data every 60 seconds
-    const interval = setInterval(() => {
-      loadDashboardData()
-    }, 60000)
-    
-    return () => clearInterval(interval)
-  }, [user])
-
-  const loadDashboardData = async () => {
+  const loadDashboard = useCallback(async () => {
     if (!user) return
+    setLoadError(false)
+    // Projects drive most of this page; the dashboard used to never load them,
+    // so landing here right after login showed "no projects".
+    fetchProjects()
 
     try {
-      setDataError(false)
-      let dashboardResponse = null
-
-      if (user.role === 'administrator' || user.role === 'direktur') {
-        try {
-          dashboardResponse = await api.getAdminDashboard()
-        } catch (error) {
-          console.warn('Admin dashboard API failed:', error.message)
-          setDataError(true)
-          dashboardResponse = { success: true, data: {} }
-        }
-        
-        // Also load attendance summary for admin
-        try {
-          const attendanceResponse = await api.getAttendanceSummary()
-          if (attendanceResponse?.success) {
-            setAttendanceSummary(attendanceResponse.data)
-          }
-        } catch (error) {
-          console.warn('Failed to load attendance summary:', error.message)
-        }
+      if (isAdmin) {
+        const [dash, att] = await Promise.allSettled([api.getAdminDashboard(), api.getAttendanceSummary()])
+        if (dash.status === 'fulfilled' && dash.value?.success) setStats(dash.value.data || {})
+        else setLoadError(true)
+        if (att.status === 'fulfilled' && att.value?.success) setAttendance(att.value.data)
       } else if (user.role === 'site_manager') {
-        try {
-          dashboardResponse = await api.getSiteManagerDashboard()
-        } catch (error) {
-          console.warn('Site dashboard API failed:', error.message)
-          setDataError(true)
-          dashboardResponse = { success: true, data: {} }
-        }
-      } else if (user.role === 'sales_manager') {
-        try {
-          dashboardResponse = await api.getSalesManagerDashboard()
-        } catch (error) {
-          console.warn('Sales dashboard API failed:', error.message)
-          setDataError(true)
-          dashboardResponse = { success: true, data: {} }
-        }
-      } else if (user.role === 'engineer') {
-        try {
-          dashboardResponse = await api.getEngineerDashboard()
-        } catch (error) {
-          console.warn('Engineer dashboard API failed:', error.message)
-          setDataError(true)
-          dashboardResponse = { success: true, data: {} }
-        }
-      }
-      
-      if (dashboardResponse?.success) {
-        setDashboardStats(dashboardResponse.data || {})
-      } else {
-        // Set fallback stats to prevent errors
-        setDashboardStats({
-          projects: { active: 0, completed: 0, delayed: 0, total: 0 },
-          rab: { total: 0, realisasi: 0, percentage: 0 },
-          users: { total: 0, active: 0 },
-          engineers: { total: 0, assigned: 0, active: 0 },
-          customers: { total: 0, new_this_month: 0 },
-          visits: { this_week: 0, completed: 0, completion_rate: 0, recent: 0 },
-          progress: { average: 0 },
-          reports: { submitted: 0 },
-          tasks: { completed: 0 },
-          deadlines: { upcoming: 0 }
-        })
+        const dash = await api.getSiteManagerDashboard()
+        setStats(dash?.data || {})
       }
     } catch (error) {
-      console.warn('Failed to load dashboard data:', error.message)
-      // Set fallback stats to prevent errors
-      setDashboardStats({
-        projects: { active: 0, completed: 0, delayed: 0, total: 0 },
-        rab: { total: 0, realisasi: 0, percentage: 0 },
-        users: { total: 0, active: 0 },
-        engineers: { total: 0, assigned: 0, active: 0 },
-        customers: { total: 0, new_this_month: 0 },
-        visits: { this_week: 0, completed: 0, completion_rate: 0, recent: 0 },
-        progress: { average: 0 },
-        reports: { submitted: 0 },
-        tasks: { completed: 0 },
-        deadlines: { upcoming: 0 }
+      console.warn('Dashboard load failed:', error.message)
+      setLoadError(true)
+    }
+  }, [user, isAdmin, fetchProjects])
+
+  useEffect(() => {
+    loadDashboard()
+    const interval = setInterval(loadDashboard, 60000)
+    return () => clearInterval(interval)
+  }, [loadDashboard])
+
+  const siteManagers = useMemo(() => users.filter(u => u.role === 'site_manager'), [users])
+
+  const visibleProjects = useMemo(() => {
+    const scoped = filterProjectsByRole(projects, user, users)
+    if (!isAdmin || filterSM === 'all') return scoped
+    const sm = siteManagers.find(s => String(s.id) === String(filterSM))
+    return scoped.filter(p =>
+      String(p.projectManagerId ?? '') === String(filterSM) ||
+      (sm && p.pm?.toLowerCase() === sm.name?.toLowerCase())
+    )
+  }, [projects, user, users, isAdmin, filterSM, siteManagers])
+
+  const metrics = useMemo(() => {
+    const active = visibleProjects
+      .filter(p => p.status !== 'completed')
+      .map(p => ({ ...p, daysLeft: daysUntil(p.deadline) }))
+      .sort((a, b) =>
+        (STATUS_RANK[a.status] ?? 3) - (STATUS_RANK[b.status] ?? 3) ||
+        (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999)
+      )
+
+    const totalRab = active.reduce((sum, p) => sum + (Number(p.rab) || 0), 0)
+    const totalReal = active.reduce((sum, p) => sum + (Number(p.realisasi) || 0), 0)
+    const delayed = active.filter(p => p.status === 'delayed' || (p.daysLeft !== null && p.daysLeft < 0))
+    const overBudget = active.filter(p => Number(p.rab) > 0 && Number(p.realisasi) > Number(p.rab))
+    const dueSoon = active.filter(p => p.daysLeft !== null && p.daysLeft >= 0 && p.daysLeft <= 14 && (p.progress || 0) < 80)
+    const avgProgress = active.length ? Math.round(active.reduce((s, p) => s + (p.progress || 0), 0) / active.length) : 0
+
+    return {
+      active,
+      completed: visibleProjects.filter(p => p.status === 'completed').length,
+      totalRab,
+      totalReal,
+      rabPct: totalRab ? Math.round((totalReal / totalRab) * 100) : 0,
+      delayed,
+      overBudget,
+      dueSoon,
+      avgProgress,
+    }
+  }, [visibleProjects])
+
+  // Things someone should act on today, most severe first.
+  const attentionItems = useMemo(() => {
+    const items = []
+    metrics.delayed.forEach(p => items.push({
+      key: `delay-${p.id}`, tone: 'critical', icon: AlertCircle, to: `/projects/${p.id}`,
+      title: p.name, detail: `Melewati deadline${p.daysLeft < 0 ? ` ${Math.abs(p.daysLeft)} hari` : ''} · progress ${p.progress || 0}%`,
+    }))
+    metrics.overBudget.forEach(p => items.push({
+      key: `budget-${p.id}`, tone: 'critical', icon: Wallet, to: `/projects/${p.id}`,
+      title: p.name, detail: `Over budget ${formatRupiahCompact(p.realisasi - p.rab)}`,
+    }))
+    metrics.dueSoon.forEach(p => items.push({
+      key: `due-${p.id}`, tone: 'warning', icon: Clock, to: `/projects/${p.id}`,
+      title: p.name, detail: `${relativeDeadline(p.daysLeft)} · progress baru ${p.progress || 0}%`,
+    }))
+    const pendingUsers = stats?.users?.pending || 0
+    if (isAdmin && pendingUsers > 0) {
+      items.push({
+        key: 'pending-users', tone: 'warning', icon: UserCheck, to: '/users',
+        title: `${pendingUsers} user menunggu persetujuan`, detail: 'Tinjau registrasi baru',
       })
     }
-  }
+    return items
+  }, [metrics, stats, isAdmin])
 
-  // Show welcome card for new users (created within last 24 hours)
-  useEffect(() => {
-    if (user?.created_at) {
-      const createdAt = new Date(user.created_at)
-      const now = new Date()
-      const hoursDiff = (now - createdAt) / (1000 * 60 * 60)
-      
-      // Show welcome for users created within last 24 hours
-      if (hoursDiff <= 24) {
-        setShowWelcome(true)
-      }
-    }
-  }, [user])
-
-  const isNewUser = () => {
-    if (!user) return false
-    
-    // Check if user has any assigned projects
-    const userProjects = projects.filter(p => 
-      p.pm?.toLowerCase() === user.name?.toLowerCase() ||
-      (user.assignedProjects && user.assignedProjects.includes(p.id.toString()))
-    )
-    
-    return userProjects.length === 0
-  }
-
-  // Use dashboard stats if available, otherwise fallback to existing logic
-  const getProjectStats = () => {
-    if (dashboardStats?.projects) {
-      return {
-        active: dashboardStats.projects.active,
-        completed: dashboardStats.projects.completed,
-        delayed: dashboardStats.projects.delayed,
-        total: dashboardStats.projects.total
-      }
-    }
-    
-    // Fallback to existing logic
-    const projects_visible = filterProjectsByRole(projects, user, users)
-    const projects_filtered = (user?.role === 'administrator' || user?.role === 'direktur') && filterSM !== 'all'
-      ? projects_visible.filter(p => p.pm?.toLowerCase() === siteManagers.find(sm => sm.id === filterSM)?.name?.toLowerCase())
-      : projects_visible
-
-    const active = projects_filtered.filter(p => p.status !== 'completed')
-    const completed = projects_filtered.filter(p => p.status === 'completed')
-    const delayed = active.filter(p => p.status === 'delayed').length
-    
-    return {
-      active: active.length,
-      completed: completed.length,
-      delayed,
-      total: projects_filtered.length,
-      projects_filtered
-    }
-  }
-
-  const getRabStats = () => {
-    if (dashboardStats?.rab) {
-      return {
-        total: dashboardStats.rab.total,
-        realisasi: dashboardStats.rab.realisasi,
-        percentage: dashboardStats.rab.percentage
-      }
-    }
-    
-    // Fallback to existing logic
-    const projects_visible = filterProjectsByRole(projects, user, users)
-    const projects_filtered = (user?.role === 'administrator' || user?.role === 'direktur') && filterSM !== 'all'
-      ? projects_visible.filter(p => p.pm?.toLowerCase() === siteManagers.find(sm => sm.id === filterSM)?.name?.toLowerCase())
-      : projects_visible
-      
-    const totalRab = projects_filtered.reduce((s, p) => s + (p.rab || 0), 0)
-    const totalReal = projects_filtered.reduce((s, p) => s + (p.realisasi || 0), 0)
-    
-    return {
-      total: totalRab,
-      realisasi: totalReal,
-      percentage: totalRab ? Math.round((totalReal / totalRab) * 100) : 0
-    }
-  }
-
-  // Role-specific KPI cards
-  const getRoleSpecificKPIs = () => {
-    if (user.role === 'site_manager') {
-      return [
-        {
-          icon: TrendingUp,
-          value: dashboardStats?.projects?.active || projectStats.active,
-          label: 'Proyek Aktif',
-          subtitle: `${dashboardStats?.engineers?.assigned || 0} engineer assigned`,
-          color: 'primary'
-        },
-        {
-          icon: Users,
-          value: dashboardStats?.engineers?.total || 0,
-          label: 'Total Engineers',
-          subtitle: `${dashboardStats?.engineers?.active || 0} sedang aktif`,
-          color: 'success'
-        },
-        {
-          icon: Clock,
-          value: dashboardStats?.deadlines?.upcoming || nearDeadline,
-          label: 'Deadline 7 Hari',
-          subtitle: 'perlu perhatian',
-          color: 'warning'
-        },
-        {
-          icon: CheckCircle,
-          value: `${avgProg}%`,
-          label: 'Avg Progress',
-          subtitle: `${projectStats.completed} selesai`,
-          color: 'info'
-        }
-      ]
-    } else if (user.role === 'sales_manager') {
-      return [
-        {
-          icon: Users,
-          value: dashboardStats?.customers?.total || 0,
-          label: 'Total Customers',
-          subtitle: `${dashboardStats?.customers?.new_this_month || 0} baru bulan ini`,
-          color: 'primary'
-        },
-        {
-          icon: Calendar,
-          value: dashboardStats?.visits?.this_week || 0,
-          label: 'Plan Visit Minggu Ini',
-          subtitle: `${dashboardStats?.visits?.completed || 0} selesai`,
-          color: 'success'
-        },
-        {
-          icon: TrendingUp,
-          value: `${dashboardStats?.visits?.completion_rate || 0}%`,
-          label: 'Completion Rate',
-          subtitle: 'tingkat penyelesaian',
-          color: 'info'
-        },
-        {
-          icon: Clock,
-          value: dashboardStats?.visits?.recent || 0,
-          label: 'Aktivitas Terbaru',
-          subtitle: '24 jam terakhir',
-          color: 'warning'
-        }
-      ]
-    } else if (user.role === 'engineer') {
-      return [
-        {
-          icon: Package,
-          value: dashboardStats?.projects?.assigned || 0,
-          label: 'Proyek Assigned',
-          subtitle: `${dashboardStats?.projects?.active || 0} sedang berjalan`,
-          color: 'primary'
-        },
-        {
-          icon: TrendingUp,
-          value: `${dashboardStats?.progress?.average || 0}%`,
-          label: 'Avg Progress',
-          subtitle: 'proyek saya',
-          color: 'success'
-        },
-        {
-          icon: Clock,
-          value: dashboardStats?.reports?.submitted || 0,
-          label: 'Progress Reports',
-          subtitle: 'bulan ini',
-          color: 'info'
-        },
-        {
-          icon: CheckCircle,
-          value: dashboardStats?.tasks?.completed || 0,
-          label: 'Tasks Completed',
-          subtitle: 'minggu ini',
-          color: 'warning'
-        }
-      ]
-    } else {
-      // Administrator/Direktur
-      return [
-        {
-          icon: TrendingUp,
-          value: projectStats.active,
-          label: 'Total Proyek Aktif',
-          subtitle: `${nearDeadline} mendekati deadline`,
-          color: 'primary'
-        },
-        {
-          icon: DollarSign,
-          value: formatRupiah(rabStats.total),
-          label: 'Total RAB',
-          subtitle: `${rabStats.percentage}% terealisasi`,
-          color: 'success'
-        },
-        {
-          icon: Users,
-          value: dashboardStats?.users?.total || users.length,
-          label: 'Total Users',
-          subtitle: `${dashboardStats?.users?.active || 0} aktif`,
-          color: 'info'
-        },
-        {
-          icon: CheckCircle,
-          value: projectStats.completed,
-          label: 'Proyek Selesai',
-          subtitle: `dari ${projectStats.total} total`,
-          color: 'warning'
-        }
-      ]
-    }
-  }
-
-  const projectStats = getProjectStats()
-  const rabStats = getRabStats()
-
-  // Site managers list untuk filter
-  const siteManagers = users.filter(u => u.role === 'site_manager')
-
-  // For backward compatibility, still use projects for project list display
-  const projects_visible = filterProjectsByRole(projects, user, users)
-  const projects_filtered = (user?.role === 'administrator' || user?.role === 'direktur') && filterSM !== 'all'
-    ? projects_visible.filter(p => p.pm?.toLowerCase() === siteManagers.find(sm => sm.id === filterSM)?.name?.toLowerCase())
-    : projects_visible
-
-  const active = projects_filtered.filter(p => p.status !== 'completed')
-  const avgProg = active.length ? Math.round(active.reduce((s, p) => s + (p.progress || 0), 0) / active.length) : 0
-  const nearDeadline = active.filter(p => {
-    const d = Math.ceil((new Date(p.deadline) - new Date()) / 86400000)
-    return d <= 30 && d > 0
-  }).length
-
-  const roleKPIs = getRoleSpecificKPIs()
+  const criticalCount = attentionItems.filter(i => i.tone === 'critical').length
+  const isInitialLoading = projectsLoading && projects.length === 0
+  const attendanceStats = attendance?.today_stats
+  // Logins drown out the events that matter (project, approval, visit changes).
+  const recentActivities = (stats?.recent_activities || []).filter(log => log.action !== 'login')
 
   return (
-    <div className="min-w-0 space-y-4 sm:space-y-6">
-      {dataError && (
-        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <span className="shrink-0 text-base">⚠️</span>
-          <span>Gagal mengambil data dari server. Data yang ditampilkan mungkin tidak terkini. Pastikan server backend berjalan.</span>
-          <button
-            onClick={loadDashboardData}
-            className="ml-auto shrink-0 rounded-md border border-amber-300 px-3 py-1 text-xs font-medium hover:bg-amber-100 transition-colors"
-          >
-            Coba Lagi
+    <div className="mx-auto w-full max-w-7xl space-y-6">
+      <PageHeader
+        title="Dashboard"
+        description={`${todayLabel()} · Ringkasan operasional proyek`}
+        actions={
+          <>
+            {isAdmin && siteManagers.length > 0 && (
+              <select
+                value={filterSM}
+                onChange={e => setFilterSM(e.target.value)}
+                className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                aria-label="Filter site manager"
+              >
+                <option value="all">Semua site manager</option>
+                {siteManagers.map(sm => <option key={sm.id} value={sm.id}>{sm.name}</option>)}
+              </select>
+            )}
+            {can(user, 'create_project') && (
+              <button
+                type="button"
+                onClick={() => navigate('/projects')}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+              >
+                <Plus size={16} />
+                Proyek Baru
+              </button>
+            )}
+          </>
+        }
+      />
+
+      {loadError && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="alert">
+          <AlertTriangle size={18} className="shrink-0 text-amber-600" />
+          <span className="min-w-0 flex-1">Sebagian data gagal dimuat dari server. Angka di bawah mungkin belum terbaru.</span>
+          <button onClick={loadDashboard} className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-amber-300 bg-white px-2.5 py-1 text-xs font-medium hover:bg-amber-100">
+            <RefreshCw size={12} /> Coba lagi
           </button>
         </div>
       )}
 
-      {/* Welcome Card for New Users */}
-      {(showWelcome || isNewUser()) && (
-        <WelcomeCard 
-          user={user} 
-          onDismiss={() => setShowWelcome(false)}
+      {/* KPI row */}
+      <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-3 sm:gap-4 xl:grid-cols-4">
+        <StatTile
+          label="Proyek aktif"
+          icon={FolderKanban}
+          value={metrics.active.length}
+          to="/projects"
+          tone={metrics.delayed.length ? 'critical' : 'neutral'}
+          context={metrics.delayed.length ? `${metrics.delayed.length} terlambat` : `${metrics.completed} proyek selesai`}
         />
-      )}
-
-      {/* Greeting Card */}
-      <div className="greeting-card">
-        <h2 className="text-[#de168c]">Selamat datang, {user?.name}!</h2>
-        <p className="text-[#de168c]">Dashboard monitoring proyek PT Amsar Prima Mandiri</p>
-      </div>
-
-      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold text-[#de168c]">Dashboard Overview</h1>
-          <p className="text-sm text-[#de168c] mt-0.5">Real-time project monitoring</p>
-        </div>
-        {(user?.role === 'administrator' || user?.role === 'direktur') && siteManagers.length > 0 && (
-          <select value={filterSM} onChange={e => setFilterSM(e.target.value)}
-            className="form-select w-full sm:w-auto">
-            <option value="all">Semua Site Manager</option>
-            {siteManagers.map(sm => (
-              <option key={sm.id} value={sm.id}>{sm.name}</option>
-            ))}
-          </select>
+        <StatTile
+          label="Realisasi anggaran"
+          icon={Wallet}
+          value={`${metrics.rabPct}%`}
+          tone={metrics.rabPct > 100 ? 'critical' : 'neutral'}
+          context={`${formatRupiahCompact(metrics.totalReal)} dari ${formatRupiahCompact(metrics.totalRab)}`}
+        >
+          <div className="mt-3"><Meter value={metrics.totalReal} max={metrics.totalRab || 1} size="sm" label="Realisasi anggaran" /></div>
+        </StatTile>
+        {isAdmin ? (
+          <StatTile
+            label="Kehadiran hari ini"
+            icon={Users}
+            to="/admin/attendance-monitor"
+            value={attendanceStats ? `${attendanceStats.checked_in}/${attendanceStats.total_employees}` : '–'}
+            context={attendanceStats ? `${attendanceStats.attendance_rate}% hadir · ${attendanceStats.currently_working} masih bekerja` : 'Data absensi belum tersedia'}
+          />
+        ) : (
+          <StatTile
+            label="Rata-rata progress"
+            icon={TrendingUp}
+            value={`${metrics.avgProgress}%`}
+            context="Proyek yang sedang berjalan"
+          >
+            <div className="mt-3"><Meter value={metrics.avgProgress} size="sm" label="Rata-rata progress" /></div>
+          </StatTile>
         )}
+        <StatTile
+          label="Perlu perhatian"
+          icon={AlertTriangle}
+          value={attentionItems.length}
+          tone={attentionItems.some(i => i.tone === 'critical') ? 'critical' : attentionItems.length ? 'warning' : 'good'}
+          context={attentionItems.length
+            ? [
+                criticalCount && `${criticalCount} kritis`,
+                attentionItems.length - criticalCount && `${attentionItems.length - criticalCount} dipantau`,
+              ].filter(Boolean).join(' · ')
+            : 'Semua proyek aman'}
+        />
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4 xl:gap-6">
-        {roleKPIs.map((kpi, index) => {
-          const IconComponent = kpi.icon
-          return (
-            <div key={index} className="stat-card fade-in">
-              <div className={`stat-card-icon ${kpi.color}`}>
-                <IconComponent size={24} />
-              </div>
-              <div className="stat-card-number">{kpi.value}</div>
-              <div className="stat-card-label">{kpi.label}</div>
-              <div className="text-xs text-gray-500 mt-1">{kpi.subtitle}</div>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        {/* Active projects */}
+        <SectionCard
+          className="xl:col-span-2"
+          title="Proyek berjalan"
+          description="Diurutkan dari yang paling butuh tindakan"
+          action={metrics.active.length > 0 && <CardLink to="/projects">Lihat semua</CardLink>}
+          bodyClassName=""
+        >
+          {isInitialLoading ? (
+            <div className="space-y-3 p-5">
+              {[0, 1, 2].map(i => <SkeletonBlock key={i} className="h-12 w-full" />)}
             </div>
-          )
-        })}
-      </div>
+          ) : metrics.active.length === 0 ? (
+            <EmptyState
+              icon={FolderKanban}
+              title="Belum ada proyek berjalan"
+              description="Proyek baru dan proyek dari funnel yang WON akan muncul di sini."
+              action={can(user, 'create_project') && (
+                <button onClick={() => navigate('/projects')} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700">
+                  <Plus size={16} /> Buat proyek
+                </button>
+              )}
+            />
+          ) : (
+            <>
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="whitespace-nowrap border-b border-gray-100 text-left text-xs font-medium text-gray-500">
+                      <th className="px-5 py-2.5 font-medium">Proyek</th>
+                      <th className="w-36 px-3 py-2.5 font-medium">Progress</th>
+                      <th className="w-40 px-3 py-2.5 font-medium">Anggaran terpakai</th>
+                      <th className="w-32 px-3 py-2.5 font-medium">Deadline</th>
+                      <th className="w-28 px-5 py-2.5 font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {metrics.active.slice(0, TABLE_LIMIT).map(p => {
+                      const budgetPct = Number(p.rab) > 0 ? Math.round((Number(p.realisasi) / Number(p.rab)) * 100) : 0
+                      const overdue = p.daysLeft !== null && p.daysLeft < 0
+                      return (
+                        <tr
+                          key={p.id}
+                          onClick={() => navigate(`/projects/${p.id}`)}
+                          className="cursor-pointer transition-colors hover:bg-gray-50"
+                        >
+                          <td className="min-w-[220px] px-5 py-3">
+                            <Link to={`/projects/${p.id}`} onClick={e => e.stopPropagation()} className="line-clamp-2 font-medium text-gray-900 hover:text-brand-700">
+                              {p.name}
+                            </Link>
+                            <p className="truncate text-xs text-gray-500">{[p.location, isAdmin && p.pm].filter(Boolean).join(' · ') || '-'}</p>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2">
+                              <Meter value={p.progress || 0} size="sm" label={`Progress ${p.name}`} />
+                              <span className="w-9 shrink-0 text-right text-xs tabular-nums text-gray-700">{p.progress || 0}%</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2">
+                              <Meter value={Number(p.realisasi) || 0} max={Number(p.rab) || 1} size="sm" label={`Anggaran ${p.name}`} />
+                              <span className={`w-10 shrink-0 text-right text-xs tabular-nums ${budgetPct > 100 ? 'font-semibold text-red-600' : 'text-gray-700'}`}>{budgetPct}%</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <p className="text-gray-900">{formatDate(p.deadline, { day: 'numeric', month: 'short' })}</p>
+                            <p className={`text-xs ${overdue ? 'font-medium text-red-600' : 'text-gray-500'}`}>{relativeDeadline(p.daysLeft)}</p>
+                          </td>
+                          <td className="px-5 py-3"><StatusBadge status={p.status} /></td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-      {/* Attendance Section - Administrator Only */}
-      {(user?.role === 'administrator' || user?.role === 'direktur') && attendanceSummary && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Attendance Stats */}
-          <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-700">Kehadiran Hari Ini</h3>
-              <button 
-                onClick={() => navigate('/attendance')}
-                className="text-xs text-blue-600 hover:text-blue-700"
-              >
-                Lihat Detail
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <CheckCircle className="text-green-600" size={16} />
-                  <span className="text-xs font-medium text-gray-600">Check In</span>
-                </div>
-                <p className="text-lg font-bold text-green-700">
-                  {attendanceSummary.today_stats.checked_in}
-                </p>
-                <p className="text-xs text-gray-500">
-                  dari {attendanceSummary.today_stats.total_employees} karyawan
-                </p>
-              </div>
-              
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <Clock className="text-blue-600" size={16} />
-                  <span className="text-xs font-medium text-gray-600">Sedang Kerja</span>
-                </div>
-                <p className="text-lg font-bold text-blue-700">
-                  {attendanceSummary.today_stats.currently_working}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {attendanceSummary.today_stats.attendance_rate}% tingkat kehadiran
-                </p>
-              </div>
-            </div>
-            
-            {/* Attendance Rate Progress */}
-            <div className="mb-2">
-              <div className="flex justify-between text-xs text-gray-600 mb-1">
-                <span>Tingkat Kehadiran</span>
-                <span>{attendanceSummary.today_stats.attendance_rate}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${attendanceSummary.today_stats.attendance_rate}%` }}
-                ></div>
-              </div>
-            </div>
-          </div>
+              {/* Mobile list */}
+              <ul className="divide-y divide-gray-100 md:hidden">
+                {metrics.active.slice(0, TABLE_LIMIT).map(p => (
+                  <li key={p.id}>
+                    <Link to={`/projects/${p.id}`} className="block px-5 py-4 active:bg-gray-50">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="min-w-0 truncate font-medium text-gray-900">{p.name}</p>
+                        <StatusBadge status={p.status} />
+                      </div>
+                      <div className="mt-2.5 flex items-center gap-2">
+                        <Meter value={p.progress || 0} size="sm" label={`Progress ${p.name}`} />
+                        <span className="w-9 shrink-0 text-right text-xs tabular-nums text-gray-700">{p.progress || 0}%</span>
+                      </div>
+                      <p className={`mt-1.5 text-xs ${p.daysLeft < 0 ? 'font-medium text-red-600' : 'text-gray-500'}`}>
+                        Deadline {formatDate(p.deadline, { day: 'numeric', month: 'short' })} · {relativeDeadline(p.daysLeft)}
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
 
-          {/* Recent Attendance Activities */}
-          <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-700">Aktivitas Terbaru</h3>
-              <span className="text-xs text-gray-500">Real-time</span>
-            </div>
-            
-            <div className="space-y-3 max-h-48 overflow-y-auto">
-              {attendanceSummary.latest_activities.length > 0 ? (
-                attendanceSummary.latest_activities.map((activity, index) => (
-                  <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      activity.check_out_time ? 'bg-red-100' : 'bg-green-100'
-                    }`}>
-                      {activity.check_out_time ? (
-                        <XCircle className="text-red-600" size={14} />
-                      ) : (
-                        <CheckCircle className="text-green-600" size={14} />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-gray-900">
-                        {activity.user_name} - {activity.check_out_time ? 'Check Out' : 'Check In'}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {activity.check_out_time || activity.check_in_time ? 
-                          new Date(activity.check_out_time || activity.check_in_time).toLocaleTimeString('id-ID') : 
-                          'N/A'
-                        } - {activity.date ? 
-                          new Date(activity.date).toLocaleDateString('id-ID') : 
-                          'N/A'
-                        }
-                      </p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-4 text-gray-400">
-                  <Clock size={24} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-xs">Belum ada aktivitas hari ini</p>
+              {metrics.active.length > TABLE_LIMIT && (
+                <div className="border-t border-gray-100 px-5 py-3 text-center">
+                  <CardLink to="/projects">{metrics.active.length - TABLE_LIMIT} proyek lainnya</CardLink>
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-      )}
+            </>
+          )}
+        </SectionCard>
 
-      {/* RAB Progress */}
-      {active.length > 0 && (
-        <div className="card space-y-4">
-          <h3 className="text-sm font-semibold text-gray-700">RAB per Proyek</h3>
-          {active.map((p, i) => {
-            const colors = ['bg-blue-500','bg-green-500','bg-yellow-500','bg-purple-500','bg-red-400']
-            return <ProgressBar key={p.id} label={`${p.name} (${formatRupiah(p.rab)})`} value={p.realisasi || 0} target={p.rab || 1} color={colors[i % colors.length]} />
-          })}
-        </div>
-      )}
-
-      {/* Status Proyek */}
-      {active.length > 0 ? (
-        <div className="card">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Status Proyek</h3>
-          <div className="space-y-3">
-            {active.map(p => (
-              <div key={p.id} onClick={() => navigate(`/projects/${p.id}`)}
-                className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
-                  <p className="text-xs text-gray-400">Deadline: {new Date(p.deadline).toLocaleDateString('id-ID')}</p>
+        <div className="space-y-6">
+          {/* Attention */}
+          <SectionCard title="Perlu perhatian" bodyClassName="">
+            {attentionItems.length === 0 ? (
+              <div className="flex items-center gap-3 px-5 py-6">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-600">
+                  <CheckCircle size={18} />
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-24">
-                    <div className="h-1.5 bg-gray-200 rounded-full">
-                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${p.progress || 0}%` }} />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-0.5 text-right">{p.progress || 0}%</p>
-                  </div>
-                  <Badge variant={statusMap[p.status]?.variant || 'default'}>{statusMap[p.status]?.label || p.status}</Badge>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Tidak ada yang mendesak</p>
+                  <p className="text-xs text-gray-500">Semua proyek sesuai jadwal & anggaran.</p>
                 </div>
               </div>
-            ))}
-          </div>
+            ) : (
+              <ul className="max-h-[340px] divide-y divide-gray-100 overflow-y-auto">
+                {attentionItems.map(item => {
+                  const Icon = item.icon
+                  return (
+                    <li key={item.key}>
+                      <Link to={item.to} className="flex items-start gap-3 px-5 py-3 transition-colors hover:bg-gray-50">
+                        <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${item.tone === 'critical' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
+                          <Icon size={15} aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium text-gray-900">{item.title}</span>
+                          <span className="block text-xs text-gray-500">{item.detail}</span>
+                        </span>
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </SectionCard>
+
+          {/* Recent activity (admin) */}
+          {isAdmin && (
+            <SectionCard title="Aktivitas terbaru" action={<CardLink to="/activity">Semua</CardLink>} bodyClassName="">
+              {recentActivities.length === 0 ? (
+                <EmptyState icon={Activity} title="Belum ada aktivitas" />
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {recentActivities.slice(0, 6).map(log => (
+                    <li key={log.id} className="flex gap-3 px-5 py-3">
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-gray-300" aria-hidden="true" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-gray-900">
+                          <span className="font-medium">{log.user_name}</span>{' '}
+                          <span className="text-gray-600">{log.description || log.action}</span>
+                        </p>
+                        <p className="text-xs text-gray-400">{relativeTime(log.created_at)}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </SectionCard>
+          )}
         </div>
-      ) : (
-        <div className="card text-center py-12 text-gray-400">
-          <p className="text-sm">Belum ada proyek aktif.{' '}
-            <span className="text-[#237043] cursor-pointer hover:underline" onClick={() => navigate('/projects')}>Tambah proyek</span>
-          </p>
-        </div>
-      )}
+      </div>
     </div>
   )
 }
-

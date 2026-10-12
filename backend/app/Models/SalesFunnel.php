@@ -176,7 +176,8 @@ class SalesFunnel extends Model
             return true;
         }
         
-        $daysSinceLastActivity = Carbon::now()->diffInDays($this->last_activity_at);
+        // Carbon 3: diffInDays is signed, so measure from the past date forward.
+        $daysSinceLastActivity = $this->last_activity_at->diffInDays(Carbon::now());
         return $daysSinceLastActivity >= 7;
     }
 

@@ -12,20 +12,40 @@ use Illuminate\Support\Facades\Validator;
 
 class PlanVisitController extends Controller
 {
+    /**
+     * Visit tracking belongs to the sales team only.
+     */
+    private function denyNonSales($user)
+    {
+        if (in_array($user?->role, ['administrator', 'admin', 'sales_manager', 'sales'], true)) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Akses ditolak. Visit tracking bukan urusan role Anda.'
+        ], 403);
+    }
+
+    private function isManager($user): bool
+    {
+        return in_array($user?->role, ['administrator', 'admin', 'sales_manager'], true);
+    }
+
     public function index(Request $request)
     {
         try {
             $user = Auth::user();
-            
+            if ($denied = $this->denyNonSales($user)) return $denied;
+
+            // Includes done/missed plans so the page's "Selesai" / "Terlewat" tabs have data.
             $query = PlanVisit::with(['customer', 'assignedUser', 'creator', 'realisasiVisit'])
-                // EXCLUDE plan visits that already have completed realisasi (status = done)
-                ->whereDoesntHave('realisasiVisit', function($q) {
-                    $q->where('status', 'done');
-                })
                 ->orderBy('tanggal_visit', 'desc');
-            
-            // All roles can see all plan visits (no filtering by role)
-            // Sales and engineer can only view, not edit/delete (handled in update/destroy methods)
+
+            // Sales only see their own plans; managers & admin see the whole team.
+            if ($user->role === 'sales') {
+                $query->where('assigned_to', $user->id);
+            }
             
             // Search functionality
             if ($request->has('search') && !empty($request->search)) {
@@ -158,20 +178,15 @@ class PlanVisitController extends Controller
         try {
             $user = Auth::user();
             
-            // Block Site Manager and Engineer from creating plan visits
-            if (in_array($user->role, ['site_manager', 'engineer'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Akses ditolak. Visit tracking bukan urusan role Anda.'
-                ], 403);
-            }
-            
+            if ($denied = $this->denyNonSales($user)) return $denied;
+
             \Log::info('PlanVisit store request data:', $request->all());
-            
+
             $validator = Validator::make($request->all(), [
                 'customer_id' => 'required|exists:customers,id',
                 'assigned_to' => 'nullable|exists:users,id',
-                'tanggal_visit' => 'nullable|date', // Changed from required to nullable
+                // A plan without a date can never be "terlewat" nor show up in the schedule.
+                'tanggal_visit' => 'required|date|after_or_equal:today',
                 'waktu_visit' => 'nullable|string',
                 'lokasi' => 'required|string|max:500',
                 'tujuan' => 'required|string|max:500',
@@ -187,11 +202,17 @@ class PlanVisitController extends Controller
                 ], 422);
             }
 
-            $user = Auth::user();
-            
-            // Auto-assign to current user if not specified and user is sales
+            $customer = Customer::find($request->customer_id);
+            if ($customer->approval_status !== 'approved') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Customer belum di-approve, belum bisa dibuatkan plan visit'
+                ], 422);
+            }
+
+            // Sales always plan for themselves; managers may assign to a salesperson.
             $assignedTo = $request->assigned_to;
-            if (!$assignedTo && in_array($user->role, ['sales', 'sales_manager'])) {
+            if ($user->role === 'sales' || (!$assignedTo && $user->role === 'sales_manager')) {
                 $assignedTo = $user->id;
             }
             
@@ -246,6 +267,7 @@ class PlanVisitController extends Controller
     public function show($id)
     {
         try {
+            if ($denied = $this->denyNonSales(Auth::user())) return $denied;
             $planVisit = PlanVisit::with(['customer', 'assignedUser', 'creator'])->find($id);
             
             if (!$planVisit) {
@@ -284,14 +306,9 @@ class PlanVisitController extends Controller
             $isScheduleOnlyUpdate = $requestedFields->isNotEmpty()
                 && $requestedFields->every(fn($field) => in_array($field, ['tanggal_visit', 'waktu_visit', 'catatan'], true));
 
-            // Sales can only reschedule their own assigned visit. Engineer cannot update visit plans.
-            if ($user->role === 'engineer') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Anda tidak memiliki akses untuk mengubah data plan visit'
-                ], 403);
-            }
-            
+            // Sales can only reschedule their own assigned visit. Engineering roles have no access.
+            if ($denied = $this->denyNonSales($user)) return $denied;
+
             $validator = Validator::make($request->all(), [
                 'customer_id' => 'sometimes|exists:customers,id',
                 'assigned_to' => 'sometimes|exists:users,id',
@@ -320,11 +337,39 @@ class PlanVisitController extends Controller
                 ], 404);
             }
 
-            if ($user->role === 'sales' && (!$isScheduleOnlyUpdate || $planVisit->assigned_to !== $user->id)) {
+            if ($user->role === 'sales' && (!$isScheduleOnlyUpdate || (int) $planVisit->assigned_to !== (int) $user->id)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Sales hanya bisa reschedule visit yang ditugaskan kepadanya'
                 ], 403);
+            }
+
+            // Once realized (done/missed) the plan is history; changing it would falsify reports.
+            if ($planVisit->realisasiVisit) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Plan visit sudah direalisasi, tidak bisa diubah'
+                ], 422);
+            }
+
+            // Rescheduling must move the visit to today or later (unchanged date is fine).
+            if ($request->filled('tanggal_visit')
+                && substr((string) $planVisit->tanggal_visit, 0, 10) !== substr((string) $request->tanggal_visit, 0, 10)
+                && \Carbon\Carbon::parse($request->tanggal_visit)->startOfDay()->lt(now()->startOfDay())) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tanggal reschedule tidak boleh di masa lalu'
+                ], 422);
+            }
+
+            if ($request->filled('assigned_to')) {
+                $assignee = User::find($request->assigned_to);
+                if (!$assignee || !in_array($assignee->role, ['sales', 'sales_manager'], true)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Assigned user must be sales or sales manager'
+                    ], 422);
+                }
             }
             
             $planVisit->update($request->only([
@@ -358,8 +403,8 @@ class PlanVisitController extends Controller
                 ], 404);
             }
             
-            // Permission check: Sales and Engineer CANNOT delete
-            if (in_array($user->role, ['sales', 'engineer'])) {
+            // Permission check: only Sales Manager / Administrator can delete
+            if (!$this->isManager($user)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Anda tidak memiliki akses untuk menghapus data plan visit'
@@ -436,10 +481,11 @@ class PlanVisitController extends Controller
             }
 
             $user = Auth::user();
+            if ($denied = $this->denyNonSales($user)) return $denied;
             $planVisit = PlanVisit::findOrFail($id);
-            
+
             // Check if user can complete this visit
-            if ($user->role === 'sales' && $planVisit->assigned_to !== $user->id) {
+            if ($user->role === 'sales' && (int) $planVisit->assigned_to !== (int) $user->id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to complete this visit'
@@ -465,6 +511,8 @@ class PlanVisitController extends Controller
             // Create realisasi visit
             $realisasiVisit = RealisasiVisit::create([
                 'plan_visit_id' => $planVisit->id,
+                'type' => 'planned',
+                'visit_date' => now()->toDateString(),
                 'status' => 'done',
                 'visit_time' => now(),
                 'notes' => $request->hasil_visit,
@@ -629,7 +677,8 @@ class PlanVisitController extends Controller
     {
         try {
             $user = Auth::user();
-            
+            if ($denied = $this->denyNonSales($user)) return $denied;
+
             $query = PlanVisit::with(['customer', 'assignedUser', 'creator', 'realisasiVisit'])
                 ->whereHas('realisasiVisit', function($q) {
                     $q->where('status', 'done')
@@ -645,8 +694,7 @@ class PlanVisitController extends Controller
                     break;
                     
                 case 'sales_manager':
-                    // Sales manager sees completed visits they created
-                    $query->where('created_by', $user->id);
+                    // Sales manager monitors the whole team, not only plans they created
                     break;
                     
                 case 'sales':

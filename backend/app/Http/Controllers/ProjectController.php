@@ -32,34 +32,7 @@ class ProjectController extends Controller
             $user = $request->user();
 
             // Query all projects with all fields needed by frontend
-            $query = Project::query()->orderByDesc('created_at');
-
-            // Role-based filtering:
-            // - Administrator and Sales Manager reports can read all projects.
-            // - Site manager sees only projects they manage/create.
-            // - Engineer sees only assigned projects.
-            if ($user && !in_array($user->role, ['administrator', 'admin', 'sales_manager'], true)) {
-                if ($user->role === 'site_manager') {
-                    $query->where(function ($q) use ($user) {
-                        $q->where('project_manager_id', $user->id);
-
-                        if (Schema::hasColumn('projects', 'site_manager_id')) {
-                            $q->orWhere('site_manager_id', $user->id);
-                        }
-
-                        if (Schema::hasColumn('projects', 'created_by')) {
-                            $q->orWhere('created_by', $user->id);
-                        }
-                    });
-                } elseif ($user->role === 'engineer') {
-                    $query->where(function ($q) use ($user) {
-                        $q->whereHas('assignments', fn($assignmentQuery) => $assignmentQuery->where('user_id', $user->id))
-                            ->orWhereJsonContains('assigned_engineers', (string) $user->id);
-                    });
-                } else {
-                    $query->whereRaw('1 = 0');
-                }
-            }
+            $query = $this->scopeForUser(Project::query(), $user)->orderByDesc('created_at');
 
             $projects = $query->get()->map(fn($p) => $this->format($p));
 
@@ -92,7 +65,7 @@ class ProjectController extends Controller
             ], 403);
         }
 
-        $projects = Project::onlyTrashed()
+        $projects = $this->scopeForUser(Project::onlyTrashed(), $request->user())
             ->with('projectManager:id,name')
             ->orderByDesc('deleted_at')
             ->get();
@@ -129,8 +102,7 @@ class ProjectController extends Controller
                 'rab'      => 'required|numeric|min:0',
             ]);
 
-            $days = now()->diffInDays($data['deadline'], false);
-            $status = $days < 0 ? 'delayed' : ($days <= 30 ? 'at_risk' : 'on_track');
+            $status = Project::statusFor($data['deadline'], 0);
             $siteManager = null;
 
             if ($user->role === 'site_manager') {
@@ -288,6 +260,26 @@ class ProjectController extends Controller
         if (isset($data['location']))  $mapped['location']         = $data['location'];
         if (isset($data['pm']))        $mapped['pm_name']          = $data['pm'];
         if (isset($data['phone']))     $mapped['pm_email']         = $data['phone'];
+
+        // Changing the PM text must also move ownership, otherwise the new PM
+        // can't access the project and the old one still controls it.
+        if (in_array($user->role, ['administrator', 'admin'], true) && (isset($data['pm']) || isset($data['phone']))) {
+            $newSiteManager = \App\Models\User::where('role', 'site_manager')
+                ->where('is_active', true)
+                ->where(function ($q) use ($data) {
+                    if (!empty($data['phone'])) $q->orWhere('email', $data['phone']);
+                    if (!empty($data['pm']))    $q->orWhere('name', $data['pm']);
+                })
+                ->first();
+
+            if ($newSiteManager) {
+                $mapped['project_manager_id'] = $newSiteManager->id;
+                $mapped['site_manager_id']    = $newSiteManager->id;
+                $mapped['pm_name']            = $newSiteManager->name;
+                $mapped['pm_email']           = $newSiteManager->email;
+            }
+        }
+
         if (isset($data['deadline']))  $mapped['end_date']         = $data['deadline'];
         if (isset($data['rab']))       $mapped['rab']             = $data['rab'];
         if (isset($data['realisasi'])) {
@@ -316,11 +308,11 @@ class ProjectController extends Controller
         }
         if (isset($data['progress']))  $mapped['progress']         = $data['progress'];
 
-        // Auto status dari deadline
+        // Auto status dari deadline + progress
         $deadline = $mapped['end_date'] ?? $project->end_date;
-        $days = now()->diffInDays($deadline, false);
+        $days = now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($deadline)->startOfDay(), false);
         if ($project->status !== 'completed') {
-            $mapped['status'] = $days < 0 ? 'delayed' : ($days <= 30 ? 'at_risk' : 'on_track');
+            $mapped['status'] = Project::statusFor($deadline, (int) ($mapped['progress'] ?? $project->progress));
         }
 
         $project->update($mapped);
@@ -347,6 +339,14 @@ class ProjectController extends Controller
 
     public function markComplete(Request $request, Project $project)
     {
+        if (!$this->canManageProject($request->user(), $project)) {
+            return response()->json(['message' => 'Hanya Administrator atau Site Manager proyek ini yang dapat menyelesaikan proyek'], 403);
+        }
+
+        if ($project->status === 'completed') {
+            return response()->json(['message' => 'Proyek sudah selesai'], 422);
+        }
+
         $note = $request->input('note', '');
         $project->update(['status' => 'completed', 'progress' => 100, 'completed_at' => now()]);
 
@@ -443,8 +443,9 @@ class ProjectController extends Controller
                 return $this->errorResponse($authCheck['message'], 403);
             }
 
-            // 7. CLEAN RELATED RECORDS
-            $deletedRelations = $this->deleteRelatedProjectRecords($project);
+            // 7. Related records are kept on purpose: this is a soft delete and
+            // restoring from trash must bring the project back complete.
+            $deletedRelations = [];
 
             // 8. PERFORM DELETE
             $projectName = $project->name;
@@ -544,8 +545,8 @@ class ProjectController extends Controller
     {
         $user = $request->user();
         
-        // RBAC: Only Site Manager can assign engineers to their projects
-        if ($user->role !== 'site_manager' || $project->project_manager_id !== $user->id) {
+        // RBAC: Administrator or the project's own Site Manager
+        if (!$this->canManageProject($user, $project)) {
             return response()->json(['message' => 'Hanya Site Manager yang dapat meng-assign engineer ke proyeknya'], 403);
         }
 
@@ -571,6 +572,18 @@ class ProjectController extends Controller
         }
 
         $project->update(['assigned_engineers' => $assignedEngineers]);
+
+        // Keep project_assignments in sync: engineer dashboard & progress reports read from it.
+        if ($action === 'assigned') {
+            \App\Models\ProjectAssignment::updateOrCreate(
+                ['project_id' => $project->id, 'user_id' => $engineer->id],
+                ['assigned_by' => $user->id, 'assigned_at' => now()]
+            );
+        } else {
+            \App\Models\ProjectAssignment::where('project_id', $project->id)
+                ->where('user_id', $engineer->id)
+                ->delete();
+        }
 
         // Send notification to engineer when assigned
         if ($action === 'assigned') {
@@ -631,8 +644,21 @@ class ProjectController extends Controller
                 ], 403);
             }
 
-            // For localStorage projects, we'll just validate engineers exist and return success
-            // The frontend will handle the actual assignment in localStorage
+            $project = \App\Models\Project::find($projectId);
+            if (!$project) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Proyek tidak ditemukan'
+                ], 404);
+            }
+
+            if (!$this->canManageProject($user, $project)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda hanya dapat meng-assign engineer ke proyek yang Anda kelola'
+                ], 403);
+            }
+
             $assignedCount = 0;
             $engineerNames = [];
             $validEngineers = [];
@@ -662,37 +688,31 @@ class ProjectController extends Controller
                 ], 422);
             }
 
-            // Try to find project in database for logging
-            $project = \App\Models\Project::find($projectId);
-            $projectName = $project ? $project->name : "Project #$projectId";
+            $projectName = $project->name;
 
-            // If project exists in database, sync assignment records
-            if ($project) {
-                \App\Models\ProjectAssignment::where('project_id', $project->id)
-                    ->whereNotIn('user_id', array_map(fn($e) => $e->id, $validEngineers))
-                    ->delete();
+            // Sync assignment records
+            \App\Models\ProjectAssignment::where('project_id', $project->id)
+                ->whereNotIn('user_id', array_map(fn($e) => $e->id, $validEngineers))
+                ->delete();
 
-                foreach ($validEngineers as $engineer) {
-                    \App\Models\ProjectAssignment::updateOrCreate(
-                        [
-                            'project_id' => $project->id,
-                            'user_id' => $engineer->id
-                        ],
-                        [
-                            'assigned_by' => $user->id,
-                            'assigned_at' => now()
-                        ]
-                    );
-                }
-
-                $project->update([
-                    'assigned_engineers' => array_map(fn($e) => (string) $e->id, $validEngineers),
-                ]);
-
-                \Log::info("Created database assignments for project: {$project->name}");
-            } else {
-                \Log::info("Project not in database, frontend will handle localStorage assignment");
+            foreach ($validEngineers as $engineer) {
+                \App\Models\ProjectAssignment::updateOrCreate(
+                    [
+                        'project_id' => $project->id,
+                        'user_id' => $engineer->id
+                    ],
+                    [
+                        'assigned_by' => $user->id,
+                        'assigned_at' => now()
+                    ]
+                );
             }
+
+            $project->update([
+                'assigned_engineers' => array_map(fn($e) => (string) $e->id, $validEngineers),
+            ]);
+
+            \Log::info("Created database assignments for project: {$project->name}");
 
             return response()->json([
                 'success' => true,
@@ -784,6 +804,13 @@ class ProjectController extends Controller
         }
 
         $project = Project::onlyTrashed()->findOrFail($id);
+        if (!$this->canManageProject($request->user(), $project)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda hanya dapat memulihkan proyek yang Anda kelola',
+                'data' => [],
+            ], 403);
+        }
         $project->restore();
         ActivityLogger::log($request->user(), 'Pulihkan Proyek', "Pulihkan proyek: {$project->name}", $project->id);
         return response()->json([
@@ -795,37 +822,8 @@ class ProjectController extends Controller
 
     public function kpiSummary(Request $request)
     {
-        $user = $request->user();
-        $query = Project::query();
-        
-        // Apply RBAC filtering
-        switch ($user->role) {
-            case 'administrator':
-                // Admin can see all projects
-                break;
-                
-            case 'sales_manager':
-                $query->where('project_manager_id', $user->id);
-                break;
-                
-            case 'sales':
-                $salesManagerIds = \App\Models\User::where('role', 'sales_manager')
-                    ->where('division', 'sales')
-                    ->pluck('id');
-                $query->whereIn('project_manager_id', $salesManagerIds);
-                break;
-                
-            case 'site_manager':
-                $query->where('project_manager_id', $user->id);
-                break;
-                
-            case 'engineer':
-                $query->whereJsonContains('assigned_engineers', (string)$user->id);
-                break;
-                
-            default:
-                $query->whereRaw('1 = 0');
-        }
+        // KPI must be computed over exactly the projects the user can see in the list.
+        $query = $this->scopeForUser(Project::query(), $request->user());
 
         return response()->json([
             'total'      => $query->clone()->count(),
@@ -917,8 +915,8 @@ class ProjectController extends Controller
             ];
         }
 
-        // Site manager can delete projects. Engineers and other roles are denied.
-        if (in_array($role, ['site_manager', 'project_manager'], true)) {
+        // Site manager can only delete projects they manage. Engineers and other roles are denied.
+        if ($role === 'site_manager' && $this->canManageProject($user, $project)) {
             return [
                 'allowed' => true,
                 'reason' => 'site_manager_access'
@@ -930,39 +928,6 @@ class ProjectController extends Controller
             'reason' => 'insufficient_permissions',
             'message' => 'Anda tidak memiliki izin untuk menghapus proyek ini'
         ];
-    }
-
-    /**
-     * Delete records that still point to a project before soft deleting it.
-     */
-    private function deleteRelatedProjectRecords($project): array
-    {
-        $projectId = $project->id;
-        $deleted = [];
-
-        $tablesToDelete = [
-            'materials',
-            'documents',
-            'progress_reports',
-            'engineer_progress_reports',
-            'project_assignments',
-            'manpower',
-            'project_notifications',
-        ];
-
-        foreach ($tablesToDelete as $table) {
-            if (Schema::hasTable($table) && Schema::hasColumn($table, 'project_id')) {
-                $deleted[$table] = DB::table($table)->where('project_id', $projectId)->delete();
-            }
-        }
-
-        if (Schema::hasTable('activity_logs') && Schema::hasColumn('activity_logs', 'project_id')) {
-            $deleted['activity_logs_detached'] = DB::table('activity_logs')
-                ->where('project_id', $projectId)
-                ->update(['project_id' => null]);
-        }
-
-        return array_filter($deleted, fn($count) => $count > 0);
     }
 
     /**
@@ -1115,6 +1080,61 @@ class ProjectController extends Controller
         }
 
         return false;
+    }
+
+    /**
+     * Restrict a project query to what the user may see:
+     * admin & sales manager => all, site manager => projects they manage,
+     * engineer => assigned projects, others => nothing.
+     */
+    private function scopeForUser($query, $user)
+    {
+        if (!$user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        switch ($user->role) {
+            case 'administrator':
+            case 'admin':
+            case 'sales_manager':
+                return $query;
+
+            case 'site_manager':
+                return $query->where(function ($q) use ($user) {
+                    $q->where('project_manager_id', $user->id)
+                        ->orWhere('site_manager_id', $user->id)
+                        ->orWhere('created_by', $user->id);
+                });
+
+            case 'engineer':
+                return $query->where(function ($q) use ($user) {
+                    $q->whereHas('assignments', fn($a) => $a->where('user_id', $user->id))
+                        ->orWhereJsonContains('assigned_engineers', (string) $user->id);
+                });
+
+            default:
+                return $query->whereRaw('1 = 0');
+        }
+    }
+
+    /**
+     * Administrator, or the Site Manager who owns the project.
+     */
+    private function canManageProject($user, $project): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if (in_array($user->role, ['administrator', 'admin'], true)) {
+            return true;
+        }
+
+        return $user->role === 'site_manager' && (
+            (int) $project->project_manager_id === (int) $user->id
+            || (int) $project->site_manager_id === (int) $user->id
+            || (int) $project->created_by === (int) $user->id
+        );
     }
 
     /**

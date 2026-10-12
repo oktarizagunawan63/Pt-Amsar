@@ -470,12 +470,12 @@ export default function ProjectsPage() {
     }
   }
   return (
-    <div className="container-responsive spacing-md">
+    <div className="container-responsive spacing-md space-y-4">
       {/* Header */}
       <div className="header-responsive">
         <div>
-          <h1 className="header-title text-[#de168c]">Daftar Proyek</h1>
-          <p className="header-subtitle text-[#de168c]">
+          <h1 className="header-title text-gray-900">Daftar Proyek</h1>
+          <p className="header-subtitle text-gray-500">
             {active.length} proyek aktif - {completed.length} selesai
             <span className="ml-2 text-xs text-gray-400">
               (Total: {projects.length} proyek)
@@ -495,7 +495,7 @@ export default function ProjectsPage() {
 
       {/* Search + Filter */}
       <div className="card-compact">
-        <div className="flex items-center gap-3 flex-wrap mb-4">
+        <div className={`flex items-center gap-3 flex-wrap ${showFilter ? 'mb-4' : ''}`}>
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
             <input 
@@ -653,7 +653,15 @@ export default function ProjectsPage() {
                   <p className="project-card-confirm-title">Tandai proyek ini selesai?</p>
                   <div className="project-card-confirm-actions">
                     <button 
-                      onClick={() => { markComplete(p.id); setConfirmId(null); toast.success('Proyek selesai') }}
+                      onClick={async () => {
+                        setConfirmId(null)
+                        try {
+                          await markComplete(p.id)
+                          toast.success('Proyek selesai')
+                        } catch (error) {
+                          toast.error(error.message || 'Gagal menandai proyek selesai')
+                        }
+                      }}
                       className="project-card-confirm-btn project-card-confirm-btn-yes"
                     >
                       Ya, Selesai
@@ -895,17 +903,17 @@ export default function ProjectsPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-[#de168c] block mb-1">Site Manager</label>
+              <label className="text-xs font-medium text-gray-700 block mb-1">Site Manager</label>
               <input type="text" required value={form.pm} onChange={e => setForm({...form, pm: e.target.value})}
                 readOnly={isSiteManager}
-                className={`w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isSiteManager ? 'bg-[#f3faf1] text-[#de168c] cursor-not-allowed' : ''}`} placeholder="Nama Site Manager..." />
-              {isSiteManager && <p className="mt-1 text-xs text-[#de168c]">Otomatis diambil dari akun site manager yang sedang login.</p>}
+                className={`w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isSiteManager ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} placeholder="Nama Site Manager..." />
+              {isSiteManager && <p className="mt-1 text-xs text-gray-500">Otomatis diambil dari akun site manager yang sedang login.</p>}
             </div>
             <div>
-              <label className="text-xs font-medium text-[#de168c] block mb-1">Email Site Manager</label>
+              <label className="text-xs font-medium text-gray-700 block mb-1">Email Site Manager</label>
               <input type="email" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
                 readOnly={isSiteManager}
-                className={`w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isSiteManager ? 'bg-[#f3faf1] text-[#de168c] cursor-not-allowed' : ''}`} placeholder="sitemanager@ptamsar.co.id" />
+                className={`w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isSiteManager ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} placeholder="sitemanager@ptamsar.co.id" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -990,15 +998,15 @@ export default function ProjectsPage() {
           <div className="flex items-start gap-3 bg-purple-50 border border-purple-200 rounded-lg p-3">
             <Users size={16} className="text-purple-600 shrink-0 mt-0.5"/>
             <div>
-              <p className="text-sm font-semibold text-[#de168c]">Assign Engineer</p>
-              <p className="text-xs text-[#de168c] mt-0.5">
+              <p className="text-sm font-semibold text-gray-900">Assign Engineer</p>
+              <p className="text-xs text-gray-500 mt-0.5">
                 Pilih engineer yang akan di-assign ke proyek "{assignModal?.projectName}"
               </p>
             </div>
           </div>
           
           <div>
-            <label className="text-xs font-medium text-[#de168c] block mb-2">Pilih Engineer:</label>
+            <label className="text-xs font-medium text-gray-700 block mb-2">Pilih Engineer:</label>
             
             {loadingEngineers ? (
               <div className="flex items-center justify-center py-8">
@@ -1033,12 +1041,12 @@ export default function ProjectsPage() {
                     </div>
                     <div className="flex-1">
                       <p className={`font-medium text-sm ${
-                        selectedEngineers.includes(normalizeId(engineer.id)) ? 'text-[#de168c]' : 'text-gray-800'
+                        selectedEngineers.includes(normalizeId(engineer.id)) ? 'text-brand-700' : 'text-gray-800'
                       }`}>
                         {engineer.name}
                       </p>
                       <p className={`text-xs ${
-                        selectedEngineers.includes(normalizeId(engineer.id)) ? 'text-[#de168c]' : 'text-gray-500'
+                        selectedEngineers.includes(normalizeId(engineer.id)) ? 'text-brand-700' : 'text-gray-500'
                       }`}>
                         {engineer.email}
                       </p>

@@ -25,7 +25,12 @@ class CustomerController extends Controller
                     break;
                     
                 case 'sales':
-                    // Sales see ALL customers (read only, no create/edit/delete)
+                    // Sales see approved customers + the ones they submitted themselves
+                    // (so they can track pending/rejected), not other people's pending entries.
+                    $query->where(function ($q) use ($user) {
+                        $q->where('approval_status', 'approved')
+                          ->orWhere('created_by', $user->id);
+                    });
                     break;
                     
                 default:
@@ -144,6 +149,13 @@ class CustomerController extends Controller
     public function show($id)
     {
         try {
+            if (!in_array(Auth::user()->role, ['administrator', 'admin', 'sales_manager', 'sales'], true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak memiliki akses ke data customer'
+                ], 403);
+            }
+
             $customer = Customer::with(['creator', 'planVisits.assignedUser', 'completedVisits'])
                                ->findOrFail($id);
             
@@ -236,23 +248,19 @@ class CustomerController extends Controller
             }
             
             $customer = Customer::findOrFail($id);
-            
-            // Delete related plan visits first
-            if ($customer->planVisits()->count() > 0) {
-                // Get all plan visit IDs
+
+            \DB::transaction(function () use ($customer) {
                 $planVisitIds = $customer->planVisits()->pluck('id');
-                
-                // Delete related realisasi visits first
+
+                // Realisasi of planned visits + unplanned visits that point straight at this customer
                 \DB::table('realisasi_visits')
                     ->whereIn('plan_visit_id', $planVisitIds)
+                    ->orWhere('customer_id', $customer->id)
                     ->delete();
-                
-                // Then delete plan visits
+
                 $customer->planVisits()->delete();
-            }
-            
-            // Now delete the customer
-            $customer->delete();
+                $customer->delete();
+            });
             
             return response()->json([
                 'success' => true,
@@ -374,11 +382,11 @@ class CustomerController extends Controller
         try {
             $user = Auth::user();
             
-            // Only sales_manager can see pending customers
-            if ($user->role !== 'sales_manager') {
+            // Same roles that can approve must be able to see what is waiting
+            if (!in_array($user->role, ['sales_manager', 'administrator'])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Only Sales Manager can view pending customers'
+                    'message' => 'Only Sales Manager or Administrator can view pending customers'
                 ], 403);
             }
             

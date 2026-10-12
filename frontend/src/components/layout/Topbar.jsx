@@ -1,4 +1,4 @@
-import { Bell, LogOut, Menu, Search, X } from '../../lib/icons.jsx'
+import { Bell, ChevronDown, LogOut, Menu, Search, User, X } from '../../lib/icons.jsx'
 import { useNavigate } from 'react-router-dom'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import useAuthStore from '../../store/authStore'
@@ -30,7 +30,9 @@ export default function Topbar({ onMenuClick }) {
   const [isSearching, setIsSearching] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
   const searchRef = useRef(null)
+  const menuRef = useRef(null)
 
   // Debounced search function
   const debouncedSearch = useCallback(
@@ -62,11 +64,19 @@ export default function Topbar({ onMenuClick }) {
 
   // Close on outside click
   useEffect(() => {
-    const handler = (e) => { 
+    const handler = (e) => {
       if (!searchRef.current?.contains(e.target)) setShowResults(false)
+      if (!menuRef.current?.contains(e.target)) setShowMenu(false)
+    }
+    const onKey = (e) => {
+      if (e.key === 'Escape') { setShowMenu(false); setShowResults(false) }
     }
     document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [])
 
   const hasResults = (searchResults?.projects?.length || 0) > 0 || 
@@ -93,62 +103,36 @@ export default function Topbar({ onMenuClick }) {
     }
   }
 
-  return (
-    <header className="shrink-0 border-b border-slate-200 bg-white">
-      <div className="flex flex-col gap-3 px-3 py-3 sm:px-4 lg:px-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={onMenuClick}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 lg:hidden"
-            >
-              <Menu size={18} />
-            </button>
-            <div className="min-w-0 lg:hidden">
-              <p className="truncate text-sm font-semibold text-slate-800">PT Amsar Prima Mandiri</p>
-            </div>
-          </div>
+  const initials = (user?.name || 'U')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0].toUpperCase())
+    .join('')
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button onClick={() => navigate('/notifications')}
-              className="relative rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700">
-              <Bell size={18} />
-              {unread > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#de168c] px-1 text-[10px] font-bold text-white shadow-sm shadow-[#de168c]/30">
-                  {unread > 9 ? '9+' : unread}
-                </span>
-              )}
-            </button>
-            <div className="hidden items-center gap-2.5 sm:flex">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#237043] text-xs font-bold text-white">
-                {user?.name?.charAt(0) ?? 'U'}
-              </div>
-              <div className="hidden min-w-0 md:block">
-                <p className="truncate text-sm font-medium leading-tight text-slate-800">{user?.name}</p>
-                <p className="text-xs text-[#de168c]">{getRoleDisplayName(user?.role)}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowLogoutConfirm(true)}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-2.5 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-[#de168c]/30 hover:bg-[#f399cc]/15 hover:text-[#de168c] sm:px-3"
-            >
-              <LogOut size={16} />
-              <span className="hidden sm:inline">Keluar</span>
-            </button>
-          </div>
-        </div>
+  return (
+    <header className="shrink-0 border-b border-gray-200 bg-white">
+      <div className="flex h-16 items-center gap-3 px-3 sm:px-4 lg:px-6">
+        <button
+          type="button"
+          onClick={onMenuClick}
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 lg:hidden"
+          aria-label="Buka menu"
+        >
+          <Menu size={20} />
+        </button>
 
       {/* Search */}
-      <div className="relative w-full max-w-full lg:max-w-md xl:max-w-lg" ref={searchRef}>
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+      <div className="relative min-w-0 flex-1 lg:max-w-md" ref={searchRef}>
+        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
         <input
           type="text"
           value={query}
           onChange={e => { setQuery(e.target.value); setShowResults(true) }}
           onFocus={() => setShowResults(true)}
-          placeholder="Cari proyek, dokumen..."
-          className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-sm text-slate-800 focus:border-[#de168c] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#de168c]/20"
+          placeholder="Cari proyek, customer, user…"
+          aria-label="Pencarian global"
+          className="h-9 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-8 text-sm text-gray-900 placeholder:text-gray-400 transition-colors focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         />
         {query && (
           <button onClick={() => { setQuery(''); setShowResults(false) }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -158,7 +142,7 @@ export default function Topbar({ onMenuClick }) {
 
         {/* Dropdown results */}
         {showResults && query.trim().length >= 2 && (
-          <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+          <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
             {isSearching ? (
               <p className="text-xs text-gray-400 px-4 py-3">Mencari...</p>
             ) : !hasResults ? (
@@ -206,18 +190,80 @@ export default function Topbar({ onMenuClick }) {
           </div>
         )}
       </div>
+
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+          <button
+            type="button"
+            onClick={() => navigate('/notifications')}
+            className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            aria-label={unread > 0 ? `Notifikasi, ${unread} belum dibaca` : 'Notifikasi'}
+          >
+            <Bell size={19} />
+            {unread > 0 && (
+              <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-500 px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
+                {unread > 9 ? '9+' : unread}
+              </span>
+            )}
+          </button>
+
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setShowMenu(open => !open)}
+              className="flex items-center gap-2.5 rounded-lg py-1 pl-1 pr-2 transition-colors hover:bg-gray-100"
+              aria-haspopup="menu"
+              aria-expanded={showMenu}
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-semibold text-white">
+                {initials}
+              </span>
+              <span className="hidden min-w-0 text-left md:block">
+                <span className="block max-w-[160px] truncate text-sm font-medium leading-tight text-gray-900">{user?.name}</span>
+                <span className="block text-xs leading-tight text-gray-500">{getRoleDisplayName(user?.role)}</span>
+              </span>
+              <ChevronDown size={16} className="hidden text-gray-400 md:block" />
+            </button>
+
+            {showMenu && (
+              <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
+                <div className="border-b border-gray-100 px-4 py-3">
+                  <p className="truncate text-sm font-medium text-gray-900">{user?.name}</p>
+                  <p className="truncate text-xs text-gray-500">{user?.email}</p>
+                </div>
+                <button
+                  role="menuitem"
+                  type="button"
+                  onClick={() => { setShowMenu(false); navigate('/profile') }}
+                  className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <User size={16} className="text-gray-400" />
+                  Profil Saya
+                </button>
+                <button
+                  role="menuitem"
+                  type="button"
+                  onClick={() => { setShowMenu(false); setShowLogoutConfirm(true) }}
+                  className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                >
+                  <LogOut size={16} />
+                  Keluar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {showLogoutConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/45 px-4">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-5 shadow-xl">
             <div className="mb-4 flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f399cc]/20 text-[#de168c]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
                 <LogOut size={18} />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-slate-900">Yakin ingin keluar?</h2>
-                <p className="mt-1 text-sm text-slate-500">
+                <h2 className="text-base font-semibold text-gray-900">Yakin ingin keluar?</h2>
+                <p className="mt-1 text-sm text-gray-500">
                   Sesi Anda akan ditutup dan Anda perlu login ulang untuk masuk ke dashboard.
                 </p>
               </div>
@@ -228,7 +274,7 @@ export default function Topbar({ onMenuClick }) {
                 type="button"
                 onClick={() => setShowLogoutConfirm(false)}
                 disabled={isLoggingOut}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-60"
               >
                 Batal
               </button>
@@ -236,7 +282,7 @@ export default function Topbar({ onMenuClick }) {
                 type="button"
                 onClick={handleLogout}
                 disabled={isLoggingOut}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#de168c] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#c2147d] disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
               >
                 <LogOut size={15} />
                 {isLoggingOut ? 'Keluar...' : 'Keluar'}

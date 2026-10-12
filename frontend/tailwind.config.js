@@ -1,110 +1,56 @@
 /** @type {import('tailwindcss').Config} */
+
+// Brand green, built around #237043 (step 600). Every step is darker than the
+// previous one so hover/active states always move in the expected direction.
+const brand = {
+  50:  '#eef7f1',
+  100: '#d6ecdd',
+  200: '#aed8bc',
+  300: '#7cbf93',
+  400: '#4c9f6c',
+  500: '#2f8453',
+  600: '#237043',
+  700: '#1c5a36',
+  800: '#17482c',
+  900: '#123923',
+  950: '#0a2214',
+}
+
+// Brand accent (logo pink). Use sparingly: highlights, never for status.
+const accent = {
+  50:  '#fdf0f7',
+  100: '#fbe0ef',
+  200: '#f7c1df',
+  300: '#f092c6',
+  400: '#e756a6',
+  500: '#de168c',
+  600: '#c0107a',
+  700: '#9c0e63',
+  800: '#7d0f51',
+  900: '#661044',
+}
+
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      // gray / slate / red / amber / orange / yellow are Tailwind's real defaults:
+      // neutrals must be neutral and danger/warning must look like danger/warning.
+      // `blue` and `green` stay mapped to the brand ramp because existing pages
+      // use them as the primary/success color.
       colors: {
-        blue: {
-          50:  '#f3faf1',
-          100: '#b7cdc0',
-          200: '#a4ca9a',
-          300: '#8ac04a',
-          400: '#5a9844',
-          500: '#237043',
-          600: '#237043',
-          700: '#5a9844',
-          800: '#237043',
-          900: '#237043',
-        },
-        green: {
-          50:  '#f3faf1',
-          100: '#b7cdc0',
-          200: '#a4ca9a',
-          300: '#8ac04a',
-          400: '#8ac04a',
-          500: '#5a9844',
-          600: '#237043',
-          700: '#237043',
-          800: '#237043',
-          900: '#237043',
-        },
-        red: {
-          50:  '#f3faf1',
-          100: '#f399cc',
-          200: '#f399cc',
-          300: '#de168c',
-          400: '#de168c',
-          500: '#d54496',
-          600: '#d54496',
-          700: '#de168c',
-          800: '#d54496',
-          900: '#d54496',
-        },
-        amber: {
-          50:  '#f3faf1',
-          100: '#b7cdc0',
-          200: '#a4ca9a',
-          300: '#8ac04a',
-          400: '#8ac04a',
-          500: '#8ac04a',
-          600: '#5a9844',
-          700: '#237043',
-          800: '#237043',
-          900: '#237043',
-        },
-        orange: {
-          50:  '#f3faf1',
-          100: '#b7cdc0',
-          200: '#a4ca9a',
-          300: '#8ac04a',
-          400: '#8ac04a',
-          500: '#8ac04a',
-          600: '#5a9844',
-          700: '#237043',
-          800: '#237043',
-          900: '#237043',
-        },
-        gray: {
-          50: '#f3faf1',
-          100: '#b7cdc0',
-          200: '#a4ca9a',
-          300: '#a4ca9a',
-          400: '#5a9844',
-          500: '#5a9844',
-          600: '#237043',
-          700: '#237043',
-          800: '#237043',
-          900: '#237043',
-        },
-        slate: {
-          50: '#f3faf1',
-          100: '#b7cdc0',
-          200: '#a4ca9a',
-          300: '#a4ca9a',
-          400: '#5a9844',
-          500: '#5a9844',
-          600: '#237043',
-          700: '#237043',
-          800: '#237043',
-          900: '#237043',
-          950: '#237043',
-        },
-        primary: {
-          50:  '#f3faf1',
-          100: '#b7cdc0',
-          500: '#237043',
-          600: '#237043',
-          700: '#5a9844',
-          900: '#237043',
-        },
-        brand: {
-          DEFAULT: '#237043',
-          light: '#5a9844',
-        }
+        brand: { ...brand, DEFAULT: brand[600], light: brand[500] },
+        primary: brand,
+        blue: brand,
+        green: brand,
+        accent: { ...accent, DEFAULT: accent[500] },
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-      }
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
+      boxShadow: {
+        card: '0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.06)',
+      },
     },
   },
   plugins: [],

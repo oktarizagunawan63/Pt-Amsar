@@ -223,6 +223,13 @@ class EngineerController extends Controller
                 ], 403);
             }
 
+            if ($project->status === 'completed') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Proyek sudah selesai, tidak bisa menambah laporan progress'
+                ], 422);
+            }
+
             $planInput = collect($request->input('plan_updates', []))
                 ->filter(fn($item) => trim((string) ($item['name'] ?? '')) !== '')
                 ->values();
@@ -442,7 +449,8 @@ class EngineerController extends Controller
                 ActivityLogger::log($user, 'Proyek Selesai', "Proyek '{$project->name}' selesai dengan progress 100%", $project->id);
             } else {
                 Project::where('id', $request->project_id)->update([
-                    'progress' => $finalProgress
+                    'progress' => $finalProgress,
+                    'status' => Project::statusFor($project->end_date, $finalProgress),
                 ]);
             }
 

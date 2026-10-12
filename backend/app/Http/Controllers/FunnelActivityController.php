@@ -17,6 +17,9 @@ class FunnelActivityController extends Controller
     {
         try {
             $user = Auth::user();
+            if (!in_array($user->role, ['administrator', 'admin', 'sales_manager', 'sales'], true)) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak. Sales funnel hanya untuk tim sales.'], 403);
+            }
             $funnel = SalesFunnel::findOrFail($funnelId);
             
             // Access control
@@ -53,6 +56,9 @@ class FunnelActivityController extends Controller
     {
         try {
             $user = Auth::user();
+            if (!in_array($user->role, ['administrator', 'admin', 'sales_manager', 'sales'], true)) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak. Sales funnel hanya untuk tim sales.'], 403);
+            }
             $funnel = SalesFunnel::findOrFail($funnelId);
             
             // Access control
@@ -62,7 +68,15 @@ class FunnelActivityController extends Controller
                     'message' => 'Unauthorized access'
                 ], 403);
             }
-            
+
+            // A won/lost deal is closed: no more pipeline activity or stage changes.
+            if ($funnel->status !== 'open') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Funnel sudah ditutup (won/lost), tidak bisa menambah aktivitas'
+                ], 422);
+            }
+
             $validator = Validator::make($request->all(), [
                 'activity_type' => 'required|in:telepon,whatsapp,email,visit,meeting,demo,kirim_penawaran,revisi_penawaran,lainnya',
                 'activity_date' => 'required|date',

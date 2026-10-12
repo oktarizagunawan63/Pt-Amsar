@@ -50,7 +50,7 @@ export default function DashboardLayout() {
   }, [unreadCount])
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-[#f3faf1]">
+    <div className="flex h-dvh overflow-hidden bg-gray-50">
       <Sidebar
         mobileOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

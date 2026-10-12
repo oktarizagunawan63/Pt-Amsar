@@ -84,6 +84,7 @@ class AdminController extends Controller
             // Recent activity logs - optimized with select
             $recentActivities = ActivityLog::select('id', 'action', 'description', 'user_id', 'created_at')
                 ->with(['user:id,name'])
+                ->where('action', '!=', 'login') // logins are noise on a dashboard feed
                 ->orderBy('created_at', 'desc')
                 ->limit(10)
                 ->get()

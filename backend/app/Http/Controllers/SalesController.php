@@ -95,9 +95,10 @@ class SalesController extends Controller
                 ->where('assigned_to', $user->id)
                 ->whereIn('status', ['pending', 'approved', 'scheduled'])
                 ->whereDoesntHave('realisasiVisit')
-                ->where('tanggal_visit', '>=', $today)
+                // Overdue-but-unrealized visits are included on purpose: they are the most
+                // urgent (realize or mark missed) and sort to the top by date.
                 ->orderBy('tanggal_visit', 'asc')
-                ->limit(5)
+                ->limit(8)
                 ->get()
                 ->map(function($visit) {
                     return [

@@ -158,8 +158,8 @@ Route::middleware(['auth:sanctum', 'throttle:300,1'])->group(function () {
         Route::delete('/{id}', [LocationController::class, 'destroy']);
     });
 
-    Route::get('/activity-logs', [ActivityLogController::class, 'index']);
-    Route::get('/activity-logs/{id}', [ActivityLogController::class, 'show']);
+    Route::get('/activity-logs', [ActivityLogController::class, 'index'])->middleware('role:administrator');
+    Route::get('/activity-logs/{id}', [ActivityLogController::class, 'show'])->middleware('role:administrator');
 
     Route::prefix('notifications')->group(function () {
         Route::get('/', [NotificationController::class, 'index']);
@@ -203,13 +203,13 @@ Route::middleware(['auth:sanctum', 'throttle:300,1'])->group(function () {
     });
 
     Route::get('/dashboard/engineer', [EngineerController::class, 'dashboard']);
-    Route::get('/dashboard/admin', [AdminController::class, 'dashboard']);
-    Route::get('/dashboard/sales-manager', [SalesManagerController::class, 'dashboard']);
-    Route::get('/dashboard/site-manager', [SiteManagerController::class, 'dashboard']);
+    Route::get('/dashboard/admin', [AdminController::class, 'dashboard'])->middleware('role:administrator');
+    Route::get('/dashboard/sales-manager', [SalesManagerController::class, 'dashboard'])->middleware('role:administrator,sales_manager');
+    Route::get('/dashboard/site-manager', [SiteManagerController::class, 'dashboard'])->middleware('role:administrator,site_manager');
     Route::get('/dashboard/sales', [SalesController::class, 'dashboard']);
 
     // Sales Manager specific routes
-    Route::prefix('sales-manager')->group(function () {
+    Route::prefix('sales-manager')->middleware('role:administrator,sales_manager')->group(function () {
         Route::get('/customers', [SalesManagerController::class, 'getCustomers']);
         Route::get('/plan-visits', [SalesManagerController::class, 'getPlanVisits']);
         Route::get('/visit-realizations', [SalesManagerController::class, 'getVisitRealizations']);

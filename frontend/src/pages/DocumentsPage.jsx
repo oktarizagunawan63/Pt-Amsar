@@ -62,7 +62,7 @@ export default function DocumentsPage() {
   const handlePreview = (doc) => {
     if (!doc.previewUrl) {
       toast('File tidak bisa dipreview', {
-        icon: <Info size={18} className='text-[#de168c]' />
+        icon: <Info size={18} className='text-brand-600' />
       })
       return
     }

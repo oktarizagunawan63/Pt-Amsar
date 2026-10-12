@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { X, CheckCircle, ArrowRight, Users, FolderOpen, Bell, Settings } from '@icons'
 import Button from './Button'
 
@@ -8,6 +8,13 @@ export default function WelcomeModal({
   user
 }) {
   const [currentStep, setCurrentStep] = useState(0)
+
+  useEffect(() => {
+    if (!open) return undefined
+    const onKey = (e) => { if (e.key === 'Escape') onClose?.() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose])
 
   if (!open || !user) return null
 
@@ -29,7 +36,7 @@ export default function WelcomeModal({
       case 'site_manager':
         return {
           title: 'Selamat Datang, Site Manager!',
-          subtitle: 'Kelola customer dan visit management dengan efisien',
+          subtitle: 'Pantau proyek, progress lapangan, dan tim engineer Anda',
           features: [
             { icon: FolderOpen, title: 'Kelola Proyek', desc: 'Monitor dan update progress proyek' },
             { icon: Users, title: 'Tim Engineer', desc: 'Approve dan koordinasi dengan engineer' },

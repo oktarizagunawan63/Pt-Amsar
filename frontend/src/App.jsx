@@ -49,7 +49,7 @@ const WelcomeModal = lazy(() => import('./components/ui/WelcomeModal'))
 function PageLoader() {
   return (
     <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
     </div>
   )
 }
@@ -179,10 +179,10 @@ export default function App() {
             maxWidth: '320px',
           },
           success: {
-            iconTheme: { primary: '#5a9844', secondary: '#f3faf1' },
+            iconTheme: { primary: '#237043', secondary: '#ffffff' },
           },
           error: {
-            iconTheme: { primary: '#d54496', secondary: '#f3faf1' },
+            iconTheme: { primary: '#dc2626', secondary: '#ffffff' },
           },
           duration: 3000,
         }}

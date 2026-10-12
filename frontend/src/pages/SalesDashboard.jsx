@@ -1,309 +1,236 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { Users, Calendar, CheckSquare, Clock, TrendingUp, MapPin, Target, AlertCircle } from '@icons'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Users, Calendar, Clock, MapPin, Target, AlertCircle, Plus, CheckSquare, RefreshCw, ArrowRight } from '@icons'
 import useAuthStore from '../store/authStore'
 import { request } from '../lib/api'
-import toast from 'react-hot-toast'
+import {
+  PageHeader, SectionCard, CardLink, StatTile, Meter, EmptyState, SkeletonBlock,
+  formatDate, daysUntil, relativeDeadline,
+} from '../components/dashboard/DashboardUI'
+
+const uniqueById = (list) => Array.from(new Map((list || []).map(item => [item.id, item])).values())
+
+const todayLabel = () => new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })
 
 export default function SalesDashboard() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
-  const [dashboardData, setDashboardData] = useState(null)
+  const [data, setData] = useState(null)
+  const [failed, setFailed] = useState(false)
   const isFetchingRef = useRef(false)
 
-  const safeDashboardData = dashboardData || {}
-  const stats = safeDashboardData.stats || {}
-  const my_customers = Array.isArray(safeDashboardData.my_customers) ? safeDashboardData.my_customers : []
-  const my_visits = Array.isArray(safeDashboardData.my_visits) ? safeDashboardData.my_visits : []
-  const attendance_warning = Boolean(safeDashboardData.attendance_warning)
-
-  const uniqueCustomers = useMemo(() => {
-    return Array.from(new Map(my_customers.map((customer) => [customer.id, customer])).values())
-  }, [my_customers])
-
-  const uniqueVisits = useMemo(() => {
-    return Array.from(new Map(my_visits.map((visit) => [visit.id, visit])).values())
-  }, [my_visits])
-
-  const statCards = [
-    { label: 'Customer Saya', value: stats.my_customers || 0, icon: Users, color: 'text-red-700', bg: 'bg-red-50' },
-    { label: 'Visit Ditugaskan', value: stats.assigned_visits || 0, icon: Calendar, color: 'text-blue-700', bg: 'bg-blue-50' },
-    { label: 'Visit Terealisasi', value: stats.completed_visits || 0, icon: CheckSquare, color: 'text-emerald-700', bg: 'bg-emerald-50' },
-    { label: 'Target Bulan Ini', value: `${stats.monthly_completion || 0}%`, icon: Target, color: 'text-amber-700', bg: 'bg-amber-50' },
-  ]
-
-  const quickActions = [
-    { label: 'Customer Saya', icon: Users, path: '/customers' },
-    { label: 'Lihat Plan Visit', icon: Calendar, path: '/plan-visits' },
-    { label: 'Mulai / Catat Visit', icon: CheckSquare, path: '/realisasi-visits' },
-    { label: 'Absen', icon: Clock, path: '/attendance' },
-  ]
-
-  const getVisitStatusMeta = (status) => {
-    const map = {
-      pending: { label: 'Menunggu Approval', className: 'bg-amber-50 text-amber-700' },
-      approved: { label: 'Siap Visit', className: 'bg-blue-50 text-blue-700' },
-      scheduled: { label: 'Direncanakan', className: 'bg-blue-50 text-blue-700' },
-      ongoing: { label: 'Sedang Berjalan', className: 'bg-amber-50 text-amber-700' },
-      completed: { label: 'Selesai', className: 'bg-emerald-50 text-emerald-700' },
-      cancelled: { label: 'Terlewat', className: 'bg-red-50 text-red-700' },
-    }
-
-    return map[status] || { label: status || '-', className: 'bg-slate-100 text-slate-700' }
-  }
-
-  useEffect(() => {
-    fetchDashboardData()
-  }, [])
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     if (isFetchingRef.current) return
-
+    isFetchingRef.current = true
+    setLoading(true)
+    setFailed(false)
     try {
-      isFetchingRef.current = true
-      setLoading(true)
       const response = await request('/dashboard/sales', { method: 'GET' })
-      
-      if (response.success) {
-        setDashboardData(response.data)
-      } else {
-        toast.error('Gagal memuat data dashboard')
-      }
+      if (response.success) setData(response.data)
+      else setFailed(true)
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
-      toast.error('Gagal memuat data dashboard')
+      setFailed(true)
     } finally {
       isFetchingRef.current = false
       setLoading(false)
     }
-  }
+  }, [])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading dashboard...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  useEffect(() => { fetchDashboardData() }, [fetchDashboardData])
 
-  if (!dashboardData) {
+  const stats = data?.stats || {}
+  const customers = useMemo(() => uniqueById(data?.my_customers), [data])
+  const visits = useMemo(
+    () => uniqueById(data?.my_visits).map(v => ({ ...v, daysLeft: daysUntil(v.tanggal_visit) })),
+    [data]
+  )
+  const overdueCount = visits.filter(v => v.daysLeft !== null && v.daysLeft < 0).length
+  const todayCount = visits.filter(v => v.daysLeft === 0).length
+  const firstName = (user?.name || '').split(' ')[0]
+
+  if (!loading && failed) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <AlertCircle className="text-red-600 mx-auto mb-4" size={48} />
-            <p className="text-gray-600">Gagal memuat data dashboard</p>
-            <button 
-              onClick={fetchDashboardData}
-              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-            >
-              Coba Lagi
+      <div className="mx-auto w-full max-w-7xl">
+        <EmptyState
+          icon={AlertCircle}
+          title="Dashboard gagal dimuat"
+          description="Periksa koneksi lalu coba lagi."
+          action={
+            <button onClick={fetchDashboardData} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700">
+              <RefreshCw size={15} /> Coba lagi
             </button>
-          </div>
-        </div>
+          }
+        />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="border-b border-slate-200 pb-5">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-red-700">Sales Workspace</p>
-            <h1 className="mt-1 text-2xl font-bold text-slate-950">Sales Dashboard</h1>
-            <p className="mt-1 text-sm text-slate-500">Halo, {user?.name}. Fokus utama: lihat jadwal, mulai visit, reschedule, atau catat unplanned visit.</p>
+    <div className="mx-auto w-full max-w-7xl space-y-6">
+      <PageHeader
+        title={firstName ? `Halo, ${firstName}` : 'Dashboard'}
+        description={
+          loading ? todayLabel() :
+          `${todayLabel()} · ${todayCount ? `${todayCount} visit hari ini` : 'Tidak ada visit hari ini'}${overdueCount ? ` · ${overdueCount} terlambat` : ''}`
+        }
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => navigate('/create-unplanned-visit')}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <Plus size={16} /> Unplanned visit
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/realisasi-visits')}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+            >
+              <CheckSquare size={16} /> Catat visit
+            </button>
+          </>
+        }
+      />
+
+      {data?.attendance_warning && (
+        <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center" role="status">
+          <Clock size={20} className="shrink-0 text-amber-600" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-amber-900">Kamu belum absen hari ini</p>
+            <p className="text-sm text-amber-800">Absen dulu sebelum mulai kunjungan.</p>
           </div>
+          <button
+            onClick={() => navigate('/attendance')}
+            className="rounded-lg bg-amber-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+          >
+            Absen sekarang
+          </button>
         </div>
+      )}
 
-        {attendance_warning && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100">
-                <Clock className="text-amber-700" size={20} />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-amber-900">Belum Absen Hari Ini</p>
-                <p className="text-sm text-amber-800">Jangan lupa melakukan absensi sebelum memulai visit.</p>
-              </div>
-              <button
-                onClick={() => navigate('/attendance')}
-                className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-700"
-              >
-                Absen Sekarang
-              </button>
-            </div>
+      {loading ? (
+        <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-3 sm:gap-4 xl:grid-cols-4">
+          {[0, 1, 2, 3].map(i => <SkeletonBlock key={i} className="h-[118px] rounded-xl" />)}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-3 sm:gap-4 xl:grid-cols-4">
+            <StatTile
+              label="Target bulan ini"
+              icon={Target}
+              value={`${stats.monthly_completion || 0}%`}
+              context={`${stats.monthly_completed || 0} dari ${stats.monthly_visits || 0} visit terealisasi`}
+            >
+              <div className="mt-3"><Meter value={stats.monthly_completion || 0} size="sm" label="Target bulan ini" /></div>
+            </StatTile>
+            <StatTile
+              label="Visit belum direalisasi"
+              icon={Calendar}
+              value={stats.assigned_visits || 0}
+              to="/realisasi-visits"
+              tone={overdueCount ? 'critical' : 'neutral'}
+              context={overdueCount ? `${overdueCount} sudah lewat tanggal` : 'Semua sesuai jadwal'}
+            />
+            <StatTile
+              label="Visit terlewat"
+              icon={AlertCircle}
+              value={stats.monthly_missed || 0}
+              tone={stats.monthly_missed ? 'critical' : 'good'}
+              context="Bulan ini"
+            />
+            <StatTile
+              label="Customer saya"
+              icon={Users}
+              value={stats.my_customers || 0}
+              to="/customers"
+              context={`${stats.completed_visits || 0} visit selesai total`}
+            />
           </div>
-        )}
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {statCards.map(({ label, value, icon: Icon, color, bg }) => (
-            <div key={label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">{label}</p>
-                  <p className={`mt-3 text-3xl font-bold ${color}`}>{value}</p>
-                </div>
-                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${bg}`}>
-                  <Icon className={color} size={22} />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold text-slate-950">Customer Saya</h2>
-                <p className="text-sm text-slate-500">Customer terbaru yang terhubung ke akun sales.</p>
-              </div>
-              <button onClick={() => navigate('/customers')} className="text-sm font-semibold text-red-700 hover:text-red-800">
-                View All
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {uniqueCustomers.length > 0 ? (
-                uniqueCustomers.map((customer) => (
-                  <button
-                    key={customer.id}
-                    onClick={() => navigate('/customers')}
-                    className="w-full rounded-lg border border-slate-200 bg-white p-4 text-left transition-colors hover:border-red-200 hover:bg-red-50"
-                  >
-                    <p className="font-semibold text-slate-900">{customer.name}</p>
-                    <p className="mt-1 text-sm text-slate-600">{customer.company || '-'}</p>
-                    <p className="mt-2 text-xs text-slate-500">{customer.phone || '-'}</p>
-                  </button>
-                ))
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+            <SectionCard
+              className="xl:col-span-2"
+              title="Jadwal visit saya"
+              description="Yang terlambat ditampilkan paling atas"
+              action={visits.length > 0 && <CardLink to="/realisasi-visits">Buka realisasi</CardLink>}
+              bodyClassName=""
+            >
+              {visits.length === 0 ? (
+                <EmptyState
+                  icon={Calendar}
+                  title="Tidak ada visit yang menunggu"
+                  description="Buat plan visit baru atau catat kunjungan yang tidak terencana."
+                  action={
+                    <button onClick={() => navigate('/plan-visits')} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700">
+                      <Plus size={16} /> Plan visit
+                    </button>
+                  }
+                />
               ) : (
-                <div className="py-8 text-center">
-                  <Users className="mx-auto mb-2 text-slate-300" size={32} />
-                  <p className="text-sm text-slate-500">Belum ada customer</p>
-                  <button onClick={() => navigate('/customers')} className="mt-3 text-sm font-semibold text-red-700 hover:text-red-800">
-                    Tambah Customer
-                  </button>
-                </div>
+                <ul className="divide-y divide-gray-100">
+                  {visits.map(visit => {
+                    const overdue = visit.daysLeft !== null && visit.daysLeft < 0
+                    const isToday = visit.daysLeft === 0
+                    return (
+                      <li key={visit.id}>
+                        <Link to="/realisasi-visits" className="group flex items-center gap-4 px-5 py-3 transition-colors hover:bg-gray-50">
+                          <div className={`w-12 shrink-0 rounded-lg py-1 text-center ${overdue ? 'bg-red-50' : isToday ? 'bg-brand-50' : 'bg-gray-50'}`}>
+                            <p className={`text-[11px] font-medium uppercase ${overdue ? 'text-red-600' : isToday ? 'text-brand-700' : 'text-gray-500'}`}>
+                              {formatDate(visit.tanggal_visit, { month: 'short' })}
+                            </p>
+                            <p className="text-lg font-semibold leading-tight text-gray-900 tabular-nums">{formatDate(visit.tanggal_visit, { day: 'numeric' })}</p>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-gray-900">
+                              {visit.customer?.name || 'Customer'}
+                              {visit.customer?.company && <span className="font-normal text-gray-500"> · {visit.customer.company}</span>}
+                            </p>
+                            <p className="flex items-center gap-1 truncate text-xs text-gray-500">
+                              <MapPin size={12} className="shrink-0" aria-hidden="true" />
+                              {visit.lokasi || '-'}{visit.waktu_visit ? ` · ${String(visit.waktu_visit).slice(0, 5)}` : ''}
+                            </p>
+                          </div>
+                          <span className={`hidden shrink-0 text-xs sm:block ${overdue ? 'font-medium text-red-600' : isToday ? 'font-medium text-brand-700' : 'text-gray-500'}`}>
+                            {relativeDeadline(visit.daysLeft)}
+                          </span>
+                          <ArrowRight size={16} className="shrink-0 text-gray-300 group-hover:text-gray-500" aria-hidden="true" />
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
               )}
-            </div>
-          </section>
+            </SectionCard>
 
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold text-slate-950">Visit yang Harus Ditindaklanjuti</h2>
-                <p className="text-sm text-slate-500">Gunakan halaman realisasi untuk mulai visit, reschedule, atau tandai terlewat.</p>
-              </div>
-              <button onClick={() => navigate('/realisasi-visits')} className="text-sm font-semibold text-red-700 hover:text-red-800">
-                Buka Aksi Visit
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {uniqueVisits.length > 0 ? (
-                uniqueVisits.map((visit) => (
-                  <button
-                    key={visit.id}
-                    onClick={() => navigate('/realisasi-visits')}
-                    className="w-full rounded-lg border border-slate-200 bg-white p-4 text-left transition-colors hover:border-red-200 hover:bg-red-50"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50">
-                        <MapPin className="text-red-700" size={17} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold text-slate-900">{visit.customer?.name || 'Unknown'}</p>
-                        <p className="mt-1 truncate text-sm text-slate-600">{visit.lokasi || '-'}</p>
-                        <div className="mt-3 flex items-center justify-between gap-3">
-                          <span className="text-sm font-semibold text-red-700">
-                            {new Date(visit.tanggal_visit).toLocaleDateString('id-ID', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
-                          </span>
-                          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getVisitStatusMeta(visit.status).className}`}>
-                            {getVisitStatusMeta(visit.status).label}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                ))
+            <SectionCard title="Customer saya" action={<CardLink to="/customers">Semua</CardLink>} bodyClassName="">
+              {customers.length === 0 ? (
+                <EmptyState
+                  icon={Users}
+                  title="Belum ada customer"
+                  action={<CardLink to="/customers">Tambah customer</CardLink>}
+                />
               ) : (
-                <div className="py-8 text-center">
-                  <Calendar className="mx-auto mb-2 text-slate-300" size={32} />
-                  <p className="text-sm text-slate-500">Belum ada visit yang ditugaskan</p>
-                  <button onClick={() => navigate('/plan-visits')} className="mt-3 text-sm font-semibold text-red-700 hover:text-red-800">
-                    Lihat Plan Visit
-                  </button>
-                </div>
+                <ul className="divide-y divide-gray-100">
+                  {customers.map(customer => (
+                    <li key={customer.id} className="flex items-center gap-3 px-5 py-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-600">
+                        {(customer.company || customer.name || '?').charAt(0).toUpperCase()}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-gray-900">{customer.company || customer.name}</p>
+                        <p className="truncate text-xs text-gray-500">{customer.company ? customer.name : customer.phone || '-'}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               )}
-            </div>
-          </section>
-
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-5 flex items-center gap-2">
-              <TrendingUp className="text-red-700" size={20} />
-              <h2 className="text-base font-semibold text-slate-950">Performance This Month</h2>
-            </div>
-
-            <div className="space-y-4">
-              {[
-                ['Total Visits', stats.monthly_visits || 0, 'text-slate-900'],
-                ['Completed', stats.monthly_completed || 0, 'text-emerald-700'],
-                ['Missed', stats.monthly_missed || 0, 'text-red-700'],
-              ].map(([label, value, color]) => (
-                <div key={label} className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
-                  <span className="text-sm text-slate-600">{label}</span>
-                  <span className={`font-semibold ${color}`}>{value}</span>
-                </div>
-              ))}
-
-              <div className="pt-2">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-700">Completion Rate</span>
-                  <span className="text-sm font-bold text-red-700">{stats.monthly_completion || 0}%</span>
-                </div>
-                <div className="h-2.5 w-full rounded-full bg-slate-200">
-                  <div
-                    className="h-2.5 rounded-full bg-red-600 transition-all duration-300"
-                    style={{ width: `${Math.min(stats.monthly_completion || 0, 100)}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-base font-semibold text-slate-950">Quick Actions</h2>
-            <p className="text-sm text-slate-500">Akses cepat ke pekerjaan harian sales.</p>
+            </SectionCard>
           </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {quickActions.map(({ label, icon: Icon, path }) => (
-              <button
-                key={label}
-                onClick={() => navigate(path)}
-                className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-4 text-left transition-colors hover:border-red-200 hover:bg-red-50"
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50">
-                  <Icon className="text-red-700" size={20} />
-                </span>
-                <span className="text-sm font-semibold text-slate-800">{label}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      </div>
+        </>
+      )}
     </div>
   )
 }

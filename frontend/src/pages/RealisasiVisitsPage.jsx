@@ -10,6 +10,7 @@ import CameraAttendance from '../components/ui/CameraAttendance'
 import { exportToCSV } from '../lib/exportExcel'
 import toast from 'react-hot-toast'
 import '../styles/realisasi-visits.css'
+import { daysUntil } from '../components/dashboard/DashboardUI'
 
 const REALISASI_CSV_COLUMNS = [
   { key: 'visit_date', label: 'Tanggal', value: (r) => r.visit_date ? new Date(r.visit_date).toLocaleDateString('id-ID') : '-' },
@@ -200,9 +201,11 @@ export default function RealisasiVisitsPage() {
     try {
       const response = await api.getCustomers()
       const customerData = response.data?.data || response.data || []
-      // Show ALL customers (including pending) for visit creation
-      const allCustomers = Array.isArray(customerData) ? customerData : []
-      setCustomers(allCustomers)
+      // Only approved customers: backend rejects visits for pending/rejected customers
+      const approvedCustomers = Array.isArray(customerData)
+        ? customerData.filter(c => c.approval_status === 'approved')
+        : []
+      setCustomers(approvedCustomers)
     } catch (error) {
       console.warn('Customers API failed:', error.message)
       setCustomers([])
@@ -526,15 +529,18 @@ export default function RealisasiVisitsPage() {
             <Navigation size={14} />
             Mulai Visit
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleMarkAsMissed(visit)}
-            className="text-red-600 border-red-200 hover:bg-red-50"
-          >
-            <XCircle size={14} />
-            Terlewat
-          </Button>
+          {/* Only a visit whose day has arrived can be marked as missed */}
+          {daysUntil(visit.tanggal_visit) <= 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleMarkAsMissed(visit)}
+              className="text-red-600 border-red-200 hover:bg-red-50"
+            >
+              <XCircle size={14} />
+              Terlewat
+            </Button>
+          )}
         </div>
       )
     }

@@ -28,6 +28,25 @@ class Project extends Model
         'assigned_engineers' => 'array',
     ];
 
+    /**
+     * Schedule health of an unfinished project:
+     * past deadline => delayed, <=30 days left with progress < 80% => at_risk.
+     */
+    public static function statusFor($endDate, int $progress): string
+    {
+        if (!$endDate) {
+            return 'on_track';
+        }
+
+        $days = now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($endDate)->startOfDay(), false);
+
+        if ($days < 0) {
+            return 'delayed';
+        }
+
+        return ($days <= 30 && $progress < 80) ? 'at_risk' : 'on_track';
+    }
+
     public function projectManager()  { return $this->belongsTo(User::class, 'project_manager_id'); }
     public function materials()       { return $this->hasMany(Material::class); }
     public function documents()       { return $this->hasMany(Document::class); }

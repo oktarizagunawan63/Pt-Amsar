@@ -142,14 +142,14 @@ export default function EngineerProjectsPage() {
   return (
     <div className="p-6">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[#de168c]">Proyek Saya</h1>
-        <p className="text-[#de168c]">Kelola proyek yang ditugaskan kepada Anda</p>
+        <h1 className="text-2xl font-bold text-gray-900">Proyek Saya</h1>
+        <p className="text-gray-500">Kelola proyek yang ditugaskan kepada Anda</p>
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-[#de168c]">Daftar Proyek</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Daftar Proyek</h2>
             <div className="text-sm text-gray-500">
               Total: {projects.length} proyek
             </div>

@@ -65,7 +65,8 @@ class AttendanceController extends Controller
             if ($user->role === 'administrator' && $request->date) {
                 $totalActive   = User::where('is_active', true)->count();
                 $presentCount  = Attendance::whereDate('date', $request->date)->count();
-                $lateCount     = Attendance::whereDate('date', $request->date)->where('is_late', true)->count();
+                // is_late is a model accessor (check-in after 08:00), not a column.
+                $lateCount     = Attendance::whereDate('date', $request->date)->whereTime('check_in_time', '>', '08:00:00')->count();
                 $summary = [
                     'totalEmployees' => $totalActive,
                     'presentToday'   => $presentCount,
@@ -166,23 +167,19 @@ class AttendanceController extends Controller
                 $photoPath = $this->saveAttendancePhoto($request->photo, $user->id, 'checkin');
             }
             
-            // Determine status - use frontend status if provided, otherwise calculate
+            // Status is always decided by the server. The client used to send its own
+            // status (always 'present'), so 'late' was never recorded and anyone could
+            // claim 'present' from anywhere.
             $checkInTime = Carbon::now();
-            $status = $request->status ?? 'present';
-            
-            if (!$request->status) {
-                // Calculate status if not provided by frontend
-                if (!$latitude || !$longitude) {
-                    $status = 'no_gps';
-                } else if ($gpsWarning) {
-                    if ($distanceFromOffice && $distanceFromOffice > 200) {
-                        $status = 'outside_area';
-                    } else {
-                        $status = 'gps_warning';
-                    }
-                } else if ($checkInTime->format('H:i') > '08:00') {
-                    $status = 'late';
-                }
+            $status = 'present';
+            $radius = $workLocation->radius_meters ?? 200;
+
+            if (!$latitude || !$longitude) {
+                $status = 'no_gps';
+            } else if ($gpsWarning) {
+                $status = ($distanceFromOffice && $distanceFromOffice > $radius) ? 'outside_area' : 'gps_warning';
+            } else if ($checkInTime->format('H:i') > '08:00') {
+                $status = 'late';
             }
             
             // Create attendance record - ALWAYS ALLOW

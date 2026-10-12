@@ -58,6 +58,7 @@ export {
   LuUserCheck as UserCheck,
   LuUsers as Users,
   LuUserX as UserX,
+  LuWallet as Wallet,
   LuX as X,
   LuCircleX as XCircle,
   LuZoomIn as ZoomIn,

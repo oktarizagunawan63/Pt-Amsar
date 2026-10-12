@@ -5,17 +5,17 @@
   --color-primary: #237043;
   --color-accent: #de168c;
   --color-accent-soft: #f399cc;
-  --color-success: #5a9844;
-  --color-warning: #8ac04a;
-  --color-danger: #d54496;
-  --color-text-primary: #237043;
-  --color-text-secondary: #5a9844;
-  --color-border: #a4ca9a;
-  --color-background: #f3faf1;
+  --color-success: #16a34a;
+  --color-warning: #f59e0b;
+  --color-danger: #dc2626;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+  --color-border: #e5e7eb;
+  --color-background: #f9fafb;
   --color-sidebar: #237043;
-  --color-sidebar-active: #5a9844;
-  --color-sidebar-hover: #5a9844;
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --color-sidebar-active: #1c5a36;
+  --color-sidebar-hover: #1c5a36;
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
   --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.15);
   --radius-card: 12px;
   --radius-button: 8px;
@@ -39,9 +39,7 @@ body {
   transition: all 0.2s ease;
 }
 
-.card:hover {
-  box-shadow: var(--shadow-elevated);
-}
+/* No hover lift on .card: only clickable things should react to hover. */
 
 /* Stat Cards */
 .stat-card {

@@ -7,6 +7,32 @@ import useAuthStore from '../store/authStore'
 import { exportToCSV } from '../lib/exportExcel'
 import toast from 'react-hot-toast'
 import '../styles/responsive-global.css'
+import { daysUntil } from '../components/dashboard/DashboardUI'
+
+// One source of truth for a plan's state (badge, filter tab, counter and CSV all agree).
+// A plan whose date has passed without realisasi is NOT "in progress": it's overdue.
+const VISIT_STATES = {
+  direncanakan:    { label: 'Direncanakan',      className: 'status-scheduled' },
+  belum_realisasi: { label: 'Belum Direalisasi', className: 'status-berjalan' },
+  selesai:         { label: 'Selesai',           className: 'status-selesai' },
+  terlewat:        { label: 'Terlewat',          className: 'status-dibatalkan' },
+}
+
+const getRealisasi = (visit) => visit.realisasi || visit.realisasiVisit || visit.realisasi_visit
+
+const isVisitCompleted = (visit) => !!getRealisasi(visit)
+
+const getVisitState = (visit) => {
+  const realisasi = getRealisasi(visit)
+  if (realisasi) return realisasi.status === 'done' ? 'selesai' : 'terlewat'
+
+  // Calendar-day comparison in local time (backend sends midnight WIB as UTC)
+  const days = daysUntil(visit.tanggal_visit)
+  return days !== null && days < 0 ? 'belum_realisasi' : 'direncanakan'
+}
+
+const getStatusClass = (visit) => VISIT_STATES[getVisitState(visit)].className
+const getStatusText = (visit) => VISIT_STATES[getVisitState(visit)].label
 
 const PLAN_VISIT_CSV_COLUMNS = [
   { key: 'tanggal_visit', label: 'Tanggal', value: (r) => r.tanggal_visit ? new Date(r.tanggal_visit).toLocaleDateString('id-ID') : '-' },
@@ -16,13 +42,7 @@ const PLAN_VISIT_CSV_COLUMNS = [
   { key: 'lokasi', label: 'Lokasi' },
   { key: 'assigned', label: 'Sales', value: (r) => r.assigned_to_user?.name || r.assignedUser?.name || '-' },
   { key: 'tujuan', label: 'Tujuan' },
-  { key: 'status', label: 'Status', value: (r) => {
-    if (r.realisasi || r.realisasiVisit || r.realisasi_visit) {
-      const s = r.realisasi?.status || r.realisasiVisit?.status || r.realisasi_visit?.status
-      return s === 'done' ? 'Selesai' : 'Dibatalkan'
-    }
-    return new Date(r.tanggal_visit) < new Date() ? 'Sedang Berjalan' : 'Direncanakan'
-  }},
+  { key: 'status', label: 'Status', value: getStatusText },
 ]
 
 const PAGE_SIZE = 10
@@ -74,7 +94,8 @@ export default function PlanVisitsPage() {
       
       if (customersResponse.status === 'fulfilled') {
         const customersData = customersResponse.value.data?.data || customersResponse.value.data || []
-        setCustomers(Array.isArray(customersData) ? customersData : [])
+        // Only approved customers can be planned (backend rejects pending/rejected ones)
+        setCustomers(Array.isArray(customersData) ? customersData.filter(c => c.approval_status === 'approved') : [])
       }
       
       if (salesResponse.status === 'fulfilled') {
@@ -178,54 +199,12 @@ export default function PlanVisitsPage() {
     })
   }
 
-  const getStatusClass = (visit) => {
-    // Check if visit has been completed (has realisasi)
-    if (visit.realisasi || visit.realisasiVisit || visit.realisasi_visit) {
-      const status = visit.realisasi?.status || visit.realisasiVisit?.status || visit.realisasi_visit?.status
-      return status === 'done' ? 'status-selesai' : 'status-dibatalkan'
-    }
-    
-    const visitDate = new Date(visit.tanggal_visit)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    if (visitDate < today) {
-      return 'status-berjalan'
-    }
-    
-    return 'status-scheduled'
-  }
-
-  const getStatusText = (visit) => {
-    // Check if visit has been completed (has realisasi)
-    if (visit.realisasi || visit.realisasiVisit || visit.realisasi_visit) {
-      const status = visit.realisasi?.status || visit.realisasiVisit?.status || visit.realisasi_visit?.status
-      return status === 'done' ? 'Selesai' : 'Dibatalkan'
-    }
-    
-    const visitDate = new Date(visit.tanggal_visit)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    if (visitDate < today) {
-      return 'Sedang Berjalan'
-    }
-    
-    return 'Direncanakan'
-  }
-
-  // Helper function to check if visit is completed - SIMPLIFIED
-  const isVisitCompleted = (visit) => {
-    return !!(visit.realisasiVisit || visit.realisasi_visit || visit.realisasi)
-  }
-
   const getStatusBadge = (visit) => {
-    const statusClass = getStatusClass(visit)
-    const statusText = getStatusText(visit)
-    
+    const state = VISIT_STATES[getVisitState(visit)]
+
     return (
-      <span className={`badge ${statusClass}`}>
-        {statusText}
+      <span className={`badge ${state.className}`}>
+        {state.label}
       </span>
     )
   }
@@ -234,7 +213,7 @@ export default function PlanVisitsPage() {
     let filtered = planVisits
 
     if (searchQuery.trim()) {
-      filtered = filtered.filter(visit => 
+      filtered = filtered.filter(visit =>
         visit.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         visit.customer?.company?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         visit.lokasi?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -242,25 +221,7 @@ export default function PlanVisitsPage() {
     }
 
     if (activeFilter !== 'semua') {
-      filtered = filtered.filter(visit => {
-        const visitDate = new Date(visit.tanggal_visit)
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const isCompleted = isVisitCompleted(visit)
-
-        switch (activeFilter) {
-          case 'direncanakan':
-            return !isCompleted && visitDate >= today
-          case 'berjalan':
-            return !isCompleted && visitDate < today
-          case 'selesai':
-            return isCompleted && (visit.realisasi?.status === 'done' || visit.realisasiVisit?.status === 'done' || visit.realisasi_visit?.status === 'done')
-          case 'dibatalkan':
-            return isCompleted && (visit.realisasi?.status === 'missed' || visit.realisasiVisit?.status === 'missed' || visit.realisasi_visit?.status === 'missed')
-          default:
-            return true
-        }
-      })
+      filtered = filtered.filter(visit => getVisitState(visit) === activeFilter)
     }
 
     return filtered
@@ -268,32 +229,11 @@ export default function PlanVisitsPage() {
 
   const filterTabs = [
     { key: 'semua', label: 'Semua', count: planVisits.length },
-    { 
-      key: 'direncanakan', 
-      label: 'Direncanakan', 
-      count: planVisits.filter(v => !isVisitCompleted(v) && new Date(v.tanggal_visit) >= new Date()).length 
-    },
-    { 
-      key: 'berjalan', 
-      label: 'Sedang Berjalan', 
-      count: planVisits.filter(v => !isVisitCompleted(v) && new Date(v.tanggal_visit) < new Date()).length 
-    },
-    { 
-      key: 'selesai', 
-      label: 'Selesai', 
-      count: planVisits.filter(v => {
-        const isCompleted = isVisitCompleted(v)
-        return isCompleted && (v.realisasi?.status === 'done' || v.realisasiVisit?.status === 'done' || v.realisasi_visit?.status === 'done')
-      }).length 
-    },
-    { 
-      key: 'dibatalkan', 
-      label: 'Dibatalkan', 
-      count: planVisits.filter(v => {
-        const isCompleted = isVisitCompleted(v)
-        return isCompleted && (v.realisasi?.status === 'missed' || v.realisasiVisit?.status === 'missed' || v.realisasi_visit?.status === 'missed')
-      }).length 
-    }
+    ...Object.entries(VISIT_STATES).map(([key, state]) => ({
+      key,
+      label: state.label,
+      count: planVisits.filter(v => getVisitState(v) === key).length,
+    })),
   ]
 
   const filteredVisits = getFilteredVisits()
@@ -352,7 +292,7 @@ export default function PlanVisitsPage() {
         
         if (todayVisits.length > 0) {
           return (
-            <div className="card-compact" style={{ background: '#f3faf1', borderLeft: '4px solid #de168c' }}>
+            <div className="card-compact" style={{ background: '#eef7f1', borderLeft: '4px solid #237043' }}>
               <h3 className="text-responsive-lg font-semibold text-blue-800 mb-3 flex items-center gap-2">
                 <Clock size={20} />
                 Visit Hari Ini

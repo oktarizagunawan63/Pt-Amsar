@@ -2,3 +2,9 @@
 .vscode/
 .kiro/
 .claude/
+.superpowers/
+
+# Demo video (Remotion)
+video/node_modules/
+video/out/
+video/capture/.backup/

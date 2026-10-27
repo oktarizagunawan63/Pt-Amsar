@@ -229,6 +229,7 @@ Route::middleware(['auth:sanctum', 'throttle:300,1'])->group(function () {
         Route::post('/', [SalesFunnelController::class, 'store']);
         Route::get('/stats/summary', [SalesFunnelController::class, 'stats']);
         Route::get('/visited-customers', [SalesFunnelController::class, 'getVisitedCustomers']);
+        Route::get('/site-managers', [SalesFunnelController::class, 'siteManagers']);
         Route::get('/{id}', [SalesFunnelController::class, 'show']);
         Route::put('/{id}', [SalesFunnelController::class, 'update']);
         Route::delete('/{id}', [SalesFunnelController::class, 'destroy']);

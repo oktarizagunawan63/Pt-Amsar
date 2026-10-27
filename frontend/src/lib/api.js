@@ -338,6 +338,7 @@ export const api = {
   getFunnelActivities: (id) => request(`/funnels/${id}/activities`),
   createFunnelActivity: (id, data) => request(`/funnels/${id}/activities`, { method: 'POST', body: JSON.stringify(data) }),
   getVisitedCustomers: () => request('/funnels/visited-customers'),
+  getFunnelSiteManagers: () => request('/funnels/site-managers'),
   
   // Search
   search: (query) => {

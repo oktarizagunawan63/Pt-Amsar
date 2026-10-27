@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 
 // Helper to send notification
@@ -538,12 +539,22 @@ class SalesFunnelController extends Controller
                 ], 400);
             }
             
+            $activeSiteManagers = $this->activeSiteManagers();
             $validator = Validator::make($request->all(), [
                 'won_reason_category' => 'required|in:harga_kompetitif,relasi,spesifikasi,after_sales,pengiriman,lainnya',
                 'won_notes' => 'nullable|string',
-                'won_date' => 'required|date|before_or_equal:today'
+                'won_date' => 'required|date|before_or_equal:today',
+                // With several site managers the salesperson picks who receives the project.
+                'site_manager_id' => [
+                    $activeSiteManagers->count() > 1 ? 'required' : 'nullable',
+                    'integer',
+                    Rule::in($activeSiteManagers->pluck('id')->all()),
+                ],
+            ], [
+                'site_manager_id.required' => 'Pilih Site Manager yang akan menerima proyek.',
+                'site_manager_id.in' => 'Site Manager tidak ditemukan atau tidak aktif.',
             ]);
-            
+
             if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
@@ -553,6 +564,8 @@ class SalesFunnelController extends Controller
             }
             
             $data = $validator->validated();
+            $chosenId = $data['site_manager_id'] ?? null;
+            unset($data['site_manager_id']);
             $data['status'] = 'won';
             $data['deal_stage'] = 'closing';
             $data['won_value'] = $funnel->estimated_value; // Use estimated value as won value
@@ -560,10 +573,7 @@ class SalesFunnelController extends Controller
             $segmentLabel = strtoupper($funnel->segment ?? 'Umum');
             $projectName = "[FUNNEL] {$funnel->customer_company} - {$segmentLabel}";
             $descriptionNotes = !empty($data['won_notes']) ? "\nCatatan: {$data['won_notes']}" : "";
-            $siteManager = User::where('role', 'site_manager')
-                ->where('is_active', true)
-                ->orderBy('id')
-                ->first();
+            $siteManager = $chosenId ? $activeSiteManagers->firstWhere('id', $chosenId) : $activeSiteManagers->first();
             // Without a site manager the project goes to an administrator, never to the salesperson.
             $owner = $siteManager ?? User::where('role', 'administrator')->where('is_active', true)->orderBy('id')->first() ?? $user;
 
@@ -721,6 +731,23 @@ class SalesFunnelController extends Controller
      * Get visited customers for funnel creation
      * Returns customers that have been visited (have realisasi visit)
      */
+    /** Active site managers, oldest first: the people a WON deal's project can be handed to. */
+    private function activeSiteManagers()
+    {
+        return User::where('role', 'site_manager')->where('is_active', true)->orderBy('id')->get(['id', 'name']);
+    }
+
+    /** GET /funnels/site-managers — choices for the "Site Manager penerima proyek" field. */
+    public function siteManagers()
+    {
+        if ($denied = $this->denyNonSales(Auth::user())) return $denied;
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->activeSiteManagers()->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])->values(),
+        ]);
+    }
+
     public function getVisitedCustomers(Request $request)
     {
         try {

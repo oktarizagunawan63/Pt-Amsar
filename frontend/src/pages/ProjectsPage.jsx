@@ -16,9 +16,9 @@ import '../styles/responsive-global.css'
 import '../styles/project-cards.css'
 
 const statusMap = {
-  on_track:  { label: 'On Track',  variant: 'success' },
-  at_risk:   { label: 'At Risk',   variant: 'warning' },
-  delayed:   { label: 'Delayed',   variant: 'danger' },
+  on_track:  { label: 'Tepat Waktu',  variant: 'success' },
+  at_risk:   { label: 'Berisiko',   variant: 'warning' },
+  delayed:   { label: 'Terlambat',   variant: 'danger' },
   completed: { label: 'Selesai',   variant: 'info' },
 }
 
@@ -539,7 +539,7 @@ export default function ProjectsPage() {
               <div className="form-group-responsive">
                 <label className="text-responsive-sm font-medium text-gray-700">Status</label>
                 <div className="flex flex-col gap-1">
-                  {[{key:'all',label:'Semua'},{key:'on_track',label:'On Track'},{key:'at_risk',label:'At Risk'},{key:'delayed',label:'Delayed'}].map(s => (
+                  {[{key:'all',label:'Semua'},{key:'on_track',label:'Tepat Waktu'},{key:'at_risk',label:'Berisiko'},{key:'delayed',label:'Terlambat'}].map(s => (
                     <button 
                       key={s.key} 
                       onClick={() => setFilterStatus(s.key)}
@@ -923,7 +923,7 @@ export default function ProjectsPage() {
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500" />
               {form.deadline && (() => {
                 const days = Math.ceil((new Date(form.deadline) - new Date()) / 86400000)
-                const status = days < 0 ? 'Delayed' : days <= 30 ? 'At Risk' : 'On Track'
+                const status = days < 0 ? 'Terlambat' : days <= 30 ? 'Berisiko' : 'Tepat Waktu'
                 const color = days < 0 ? 'text-red-500' : days <= 30 ? 'text-yellow-600' : 'text-green-600'
                 return <p className={`text-xs mt-1 ${color}`}>Status otomatis: {status} ({days < 0 ? `${Math.abs(days)} hari lewat` : `${days} hari lagi`})</p>
               })()}

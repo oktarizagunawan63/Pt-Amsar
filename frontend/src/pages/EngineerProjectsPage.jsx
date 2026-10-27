@@ -50,7 +50,7 @@ export default function EngineerProjectsPage() {
     const statusMap = {
       'delayed': { bg: 'bg-red-100', text: 'text-red-700', label: 'Terlambat' },
       'at_risk': { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Berisiko' },
-      'on_track': { bg: 'bg-blue-100', text: 'text-blue-700', label: 'On Track' }
+      'on_track': { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Tepat Waktu' }
     }
     
     const style = statusMap[status] || statusMap.on_track

@@ -392,7 +392,7 @@ export default function ProjectDetailPage() {
           {isCompleted
             ? <Badge variant="info">Selesai</Badge>
             : <Badge variant={project.status==='at_risk'?'warning':project.status==='delayed'?'danger':'success'}>
-                {project.status==='at_risk'?'At Risk':project.status==='delayed'?'Delayed':'On Track'}
+                {project.status==='at_risk'?'Berisiko':project.status==='delayed'?'Terlambat':'Tepat Waktu'}
               </Badge>
           }
         </div>
@@ -441,7 +441,7 @@ export default function ProjectDetailPage() {
                 `RAB        : ${formatRupiah(project.rab)}\n` +
                 `Terealisasi: ${formatRupiah(project.realisasi || 0)}\n` +
                 `Sisa Waktu : ${remainingTimeValue} (${remainingTimeNote})\n` +
-                `Status     : ${project.status === 'on_track' ? 'On Track' : project.status === 'at_risk' ? 'At Risk' : project.status === 'delayed' ? 'Delayed' : 'Selesai'}\n\n` +
+                `Status     : ${project.status === 'on_track' ? 'Tepat Waktu' : project.status === 'at_risk' ? 'Berisiko' : project.status === 'delayed' ? 'Terlambat' : 'Selesai'}\n\n` +
                 `Demikian laporan ini kami sampaikan.\n\nHormat kami,\n${user.name}\nSite Manager - PT Amsar Prima Mandiri`
               )
               return (
@@ -1285,7 +1285,7 @@ export default function ProjectDetailPage() {
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"/>
             {editForm.deadline && (() => {
               const days = Math.ceil((new Date(editForm.deadline) - new Date()) / 86400000)
-              const status = days < 0 ? 'Delayed' : days <= 30 ? 'At Risk' : 'On Track'
+              const status = days < 0 ? 'Terlambat' : days <= 30 ? 'Berisiko' : 'Tepat Waktu'
               const color = days < 0 ? 'text-red-500' : days <= 30 ? 'text-yellow-600' : 'text-green-600'
               return <p className={`text-xs mt-1 ${color}`}>Status otomatis: {status}</p>
             })()}

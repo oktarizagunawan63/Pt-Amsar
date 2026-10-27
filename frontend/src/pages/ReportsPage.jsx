@@ -6,9 +6,9 @@ import { formatRupiah } from '../lib/formatRupiah'
 import toast from 'react-hot-toast'
 
 const statusLabel = {
-  on_track: 'On Track',
-  at_risk: 'At Risk',
-  delayed: 'Delayed',
+  on_track: 'Tepat Waktu',
+  at_risk: 'Berisiko',
+  delayed: 'Terlambat',
   completed: 'Selesai',
 }
 

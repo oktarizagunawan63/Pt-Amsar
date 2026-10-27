@@ -64,7 +64,7 @@ export const relativeTime = (value) => {
 // ---------------------------------------------------------------------------
 
 export const PROJECT_STATUS = {
-  on_track:  { label: 'On Track',  icon: CheckCircle,   className: 'bg-green-50 text-green-700 ring-green-600/20' },
+  on_track:  { label: 'Tepat Waktu',  icon: CheckCircle,   className: 'bg-green-50 text-green-700 ring-green-600/20' },
   at_risk:   { label: 'Berisiko',  icon: AlertTriangle, className: 'bg-amber-50 text-amber-800 ring-amber-600/25' },
   delayed:   { label: 'Terlambat', icon: AlertCircle,   className: 'bg-red-50 text-red-700 ring-red-600/20' },
   completed: { label: 'Selesai',   icon: CheckCheck,    className: 'bg-gray-100 text-gray-700 ring-gray-500/20' },

@@ -48,7 +48,7 @@ export const exportProyekPDF = (project, materials = [], docs = [], progressRepo
     ['Progress', `${project.progress || 0}%`],
     ['RAB', formatRupiah(project.rab)],
     ['RAB Terealisasi', formatRupiah(project.realisasi || 0)],
-    ['Status', project.status === 'on_track' ? 'On Track' : project.status === 'at_risk' ? 'At Risk' : project.status === 'delayed' ? 'Delayed' : 'Selesai'],
+    ['Status', project.status === 'on_track' ? 'Tepat Waktu' : project.status === 'at_risk' ? 'Berisiko' : project.status === 'delayed' ? 'Terlambat' : 'Selesai'],
   ]
   const boxW = 43
   kpis.forEach((kpi, i) => {
@@ -215,7 +215,7 @@ function _generatePDF(projects, title) {
   doc.setFont('helvetica', 'bold')
   doc.text('Detail Proyek Aktif', 14, 58)
 
-  const statusLabel = { on_track: 'On Track', at_risk: 'At Risk', delayed: 'Delayed', completed: 'Selesai' }
+  const statusLabel = { on_track: 'Tepat Waktu', at_risk: 'Berisiko', delayed: 'Terlambat', completed: 'Selesai' }
 
   autoTable(doc, {
     startY: 61,

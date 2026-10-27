@@ -64,7 +64,7 @@ export default function AddProjectForm({ open, onClose, onSave }) {
           <div>
             <label className="text-xs font-medium text-gray-600 block mb-1">Status</label>
             <select {...f('status')} className={cls}>
-              <option value="on_track">On Track</option>
+              <option value="on_track">Tepat Waktu</option>
               <option value="at_risk">At Risk</option>
               <option value="delayed">Delayed</option>
             </select>

@@ -28,17 +28,17 @@ export const PROJECT_STATUS = {
 
 export const STATUS_CONFIG = {
   [PROJECT_STATUS.ON_TRACK]: { 
-    label: 'On Track', 
+    label: 'Tepat Waktu', 
     variant: 'success',
     color: '#5a9844'
   },
   [PROJECT_STATUS.AT_RISK]: { 
-    label: 'At Risk', 
+    label: 'Berisiko', 
     variant: 'warning',
     color: '#8ac04a'
   },
   [PROJECT_STATUS.DELAYED]: { 
-    label: 'Delayed', 
+    label: 'Terlambat', 
     variant: 'danger',
     color: '#d54496'
   },

@@ -1,13 +1,24 @@
-import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion';
+import { wipeOffset } from '../lib/wipe';
 
-/** A band of the next role's color sweeping left → right across its whole sequence. */
+/** A band of the next role's color sweeping in from the left until it covers the screen. */
 export const Wipe: React.FC<{ color: string }> = ({ color }) => {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
-  const x = interpolate(frame, [0, durationInFrames], [-110, 110], { easing: Easing.inOut(Easing.cubic) });
   return (
     <AbsoluteFill style={{ overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', inset: 0, background: color, transform: `translateX(${x}%) skewX(-12deg)` }} />
+      {/* Wider than the screen so the skewed edge never leaves a gap once it has arrived. */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          left: '-15%',
+          width: '130%',
+          background: color,
+          transform: `translateX(${wipeOffset(frame, durationInFrames)}%) skewX(-12deg)`,
+        }}
+      />
     </AbsoluteFill>
   );
 };

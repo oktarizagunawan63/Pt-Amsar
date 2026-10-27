@@ -14,36 +14,12 @@ import type { RoleId } from '../src/content/types.ts';
 import { api } from './api.ts';
 import { fillForRole, type DemoIds } from './fill-demo.ts';
 import { assertNotLoginPage, clipToViewport, validateManifest, VIEWPORT, type Box, type Manifest } from './manifest.ts';
-import { ACCOUNTS, withTemporaryPasswords } from './passwords.ts';
-
-const APP = 'http://localhost:5173';
+import { withTemporaryPasswords } from './passwords.ts';
+import { APP, login } from './session.ts';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SCREENS = join(ROOT, 'public', 'screens');
 const explore = process.argv.includes('--explore');
 const EXPLORE_DIR = process.env.EXPLORE_DIR ?? join(ROOT, 'out', 'explore');
-
-async function login(page: Page, role: RoleId, password: string): Promise<string> {
-  const email = ACCOUNTS.find((a) => a.role === role)!.email;
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    await page.goto(`${APP}/login`);
-    await page.fill('input[type=email]', email);
-    await page.fill('input[type=password]', password);
-    await page.click('button[type=submit]');
-    try {
-      await page.waitForURL((u) => u.pathname !== '/login', { timeout: 15000 });
-      break;
-    } catch {
-      // /api/auth/login allows 5 attempts per minute; wait it out once before giving up.
-      if (attempt === 2) break;
-      console.log(`  login ${role} tertahan, tunggu 61 detik…`);
-      await page.waitForTimeout(61000);
-    }
-  }
-  assertNotLoginPage(page.url(), role);
-  const token = await page.evaluate(() => JSON.parse(localStorage.getItem('amsar-auth') ?? '{}').state?.token);
-  if (!token) throw new Error(`Token tidak ditemukan setelah login ${role}`);
-  return token;
-}
 
 function resolveRoute(route: string, role: RoleId, shotId: string, ids: DemoIds | null): string {
   if (!route.includes(':id')) return route;

@@ -5,6 +5,7 @@ import useAuthStore from '../../store/authStore'
 import useAppStore from '../../store/appStore'
 import { getRoleDisplayName } from '../../utils/roleUtils'
 import { api } from '../../lib/api'
+import UserAvatar from '../ui/UserAvatar'
 
 // Debounce utility function
 function debounce(func, wait) {
@@ -103,12 +104,6 @@ export default function Topbar({ onMenuClick }) {
     }
   }
 
-  const initials = (user?.name || 'U')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(part => part[0].toUpperCase())
-    .join('')
 
   return (
     <header className="shrink-0 border-b border-gray-200 bg-white">
@@ -214,9 +209,7 @@ export default function Topbar({ onMenuClick }) {
               aria-haspopup="menu"
               aria-expanded={showMenu}
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-semibold text-white">
-                {initials}
-              </span>
+              <UserAvatar user={user} />
               <span className="hidden min-w-0 text-left md:block">
                 <span className="block max-w-[160px] truncate text-sm font-medium leading-tight text-gray-900">{user?.name}</span>
                 <span className="block text-xs leading-tight text-gray-500">{getRoleDisplayName(user?.role)}</span>

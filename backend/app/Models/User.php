@@ -12,9 +12,17 @@ class User extends Authenticatable
     protected $fillable = [
         'name', 'email', 'password', 'role', 'division',
         'is_active', 'status', 'approved_by', 'approved_at', 'rejection_reason', 'assigned_projects', 'phone',
+        'avatar',
     ];
 
     protected $hidden = ['password', 'remember_token'];
+
+    protected $appends = ['avatar_url'];
+
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return $this->avatar ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->avatar) : null;
+    }
 
     protected $casts = [
         'is_active'         => 'boolean',

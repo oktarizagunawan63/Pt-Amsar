@@ -1,17 +1,24 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { api } from '../lib/api'
 import useAuthStore from '../store/authStore'
-import { Save, Lock } from '@icons'
+import { Save, Lock, Camera, Trash2 } from '@icons'
 import { getRoleDisplayName } from '../utils/roleUtils'
+import UserAvatar from '../components/ui/UserAvatar'
 import toast from 'react-hot-toast'
 
 const EMPTY_PW = { current_password: '', new_password: '', new_password_confirmation: '' }
+// Mirrors the backend rule: image|mimes:jpg,jpeg,png,webp|max:2048
+const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuthStore()
 
   const [name, setName] = useState(user?.name ?? '')
   const [savingProfile, setSavingProfile] = useState(false)
+
+  const [savingAvatar, setSavingAvatar] = useState(false)
+  const fileRef = useRef(null)
 
   const [pwForm, setPwForm] = useState(EMPTY_PW)
   const [savingPw, setSavingPw] = useState(false)
@@ -49,7 +56,43 @@ export default function ProfilePage() {
     }
   }
 
-  const initial = user?.name?.charAt(0)?.toUpperCase() ?? 'U'
+  const handleAvatarPick = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-picking the same file
+    if (!file) return
+    if (!AVATAR_TYPES.includes(file.type)) {
+      toast.error('Format foto harus JPG, PNG, atau WEBP')
+      return
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      toast.error('Ukuran foto maksimal 2 MB')
+      return
+    }
+    setSavingAvatar(true)
+    try {
+      const res = await api.uploadAvatar(file)
+      updateUser(res.user)
+      toast.success('Foto profil diperbarui')
+    } catch (err) {
+      toast.error(err?.message || 'Gagal mengunggah foto')
+    } finally {
+      setSavingAvatar(false)
+    }
+  }
+
+  const handleAvatarDelete = async () => {
+    setSavingAvatar(true)
+    try {
+      const res = await api.deleteAvatar()
+      updateUser(res.user)
+      toast.success('Foto profil dihapus')
+    } catch (err) {
+      toast.error(err?.message || 'Gagal menghapus foto')
+    } finally {
+      setSavingAvatar(false)
+    }
+  }
+
   const nameChanged = name.trim() !== (user?.name ?? '')
 
   return (
@@ -59,11 +102,9 @@ export default function ProfilePage() {
       {/* Account info + name edit */}
       <div className="card p-6">
         {/* Avatar + identity */}
-        <div className="flex items-center gap-4 mb-6 pb-5 border-b border-gray-100">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#237043]/10 text-2xl font-bold text-[#237043]">
-            {initial}
-          </div>
-          <div>
+        <div className="flex flex-col gap-4 mb-6 pb-5 border-b border-gray-100 sm:flex-row sm:items-center">
+          <UserAvatar user={user} className="h-20 w-20 text-2xl" />
+          <div className="min-w-0 flex-1">
             <p className="text-base font-semibold text-gray-800">{user?.name}</p>
             <p className="text-sm text-gray-500">{user?.email}</p>
             {user?.role && (
@@ -71,6 +112,36 @@ export default function ProfilePage() {
                 {getRoleDisplayName(user.role)}
               </span>
             )}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleAvatarPick}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={savingAvatar}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Camera size={14} />
+                {savingAvatar ? 'Mengunggah...' : user?.avatar_url ? 'Ganti foto' : 'Upload foto'}
+              </button>
+              {user?.avatar_url && (
+                <button
+                  type="button"
+                  onClick={handleAvatarDelete}
+                  disabled={savingAvatar}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                >
+                  <Trash2 size={14} />
+                  Hapus
+                </button>
+              )}
+              <span className="text-xs text-gray-400">JPG, PNG, atau WEBP · maks. 2 MB</span>
+            </div>
           </div>
         </div>
 

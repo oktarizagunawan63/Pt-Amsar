@@ -52,6 +52,8 @@ Route::middleware(['auth:sanctum', 'throttle:300,1'])->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
     Route::put('/auth/password', [AuthController::class, 'changePassword']);
+    Route::post('/auth/avatar', [AuthController::class, 'uploadAvatar']);
+    Route::delete('/auth/avatar', [AuthController::class, 'deleteAvatar']);
 
     Route::prefix('users')->group(function () {
         Route::get('/', [UserController::class, 'index']);

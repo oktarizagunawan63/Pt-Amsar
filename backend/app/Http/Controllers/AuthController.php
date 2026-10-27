@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -62,17 +63,64 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'token' => $token,
-            'user'  => [
-                'id'    => $user->id,
-                'name'  => $user->name,
-                'email' => $user->email,
-                'role'  => $user->role,
-                'division' => $user->division,
-                'status' => $user->status,
-                'is_active' => (bool) $user->is_active,
-                'approved_at' => $user->approved_at,
-                'created_at' => $user->created_at,
-            ],
+            'user'  => $this->userPayload($user),
+        ]);
+    }
+
+    private function userPayload(User $user): array
+    {
+        return [
+            'id'          => $user->id,
+            'name'        => $user->name,
+            'email'       => $user->email,
+            'role'        => $user->role,
+            'division'    => $user->division,
+            'status'      => $user->status,
+            'is_active'   => (bool) $user->is_active,
+            'approved_at' => $user->approved_at,
+            'created_at'  => $user->created_at,
+            'avatar_url'  => $user->avatar_url,
+        ];
+    }
+
+    public function uploadAvatar(Request $request)
+    {
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ], [
+            'avatar.required' => 'Pilih foto terlebih dahulu.',
+            'avatar.image'    => 'File harus berupa gambar.',
+            'avatar.mimes'    => 'Format foto harus JPG, PNG, atau WEBP.',
+            'avatar.max'      => 'Ukuran foto maksimal 2 MB.',
+        ]);
+
+        $user = $request->user();
+        $old = $user->avatar;
+
+        $user->update(['avatar' => $request->file('avatar')->store('avatars', 'public')]);
+
+        if ($old) {
+            Storage::disk('public')->delete($old);
+        }
+
+        return response()->json([
+            'message' => 'Foto profil berhasil diperbarui.',
+            'user' => $this->userPayload($user),
+        ]);
+    }
+
+    public function deleteAvatar(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+            $user->update(['avatar' => null]);
+        }
+
+        return response()->json([
+            'message' => 'Foto profil dihapus.',
+            'user' => $this->userPayload($user),
         ]);
     }
 
@@ -99,17 +147,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Profil berhasil diperbarui.',
-            'user' => [
-                'id'         => $user->id,
-                'name'       => $user->name,
-                'email'      => $user->email,
-                'role'       => $user->role,
-                'division'   => $user->division,
-                'status'     => $user->status,
-                'is_active'  => (bool) $user->is_active,
-                'approved_at'=> $user->approved_at,
-                'created_at' => $user->created_at,
-            ],
+            'user' => $this->userPayload($user),
         ]);
     }
 

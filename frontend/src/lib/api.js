@@ -36,6 +36,22 @@ const getFirstValidationMessage = (errors = {}) => {
   return null
 }
 
+// FormData upload - must NOT set Content-Type (browser sets the multipart boundary itself)
+const uploadForm = (endpoint, formData) => {
+  const token = getToken()
+  const headers = { 'Accept': 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  return fetch(`${API_BASE}${endpoint}`, { method: 'POST', headers, body: formData })
+    .then(async res => {
+      if (res.status === 401) { localStorage.removeItem('amsar-auth'); window.location.href = '/login'; throw new Error('Session expired') }
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        throw { message: getFirstValidationMessage(d.errors) || d.message || `HTTP ${res.status}`, errors: d.errors || {}, status: res.status }
+      }
+      return res.json()
+    })
+}
+
 const request = (endpoint, options = {}) => {
   const { dedupeKey, ...fetchOptions } = options
   const url = `${API_BASE}${endpoint}`
@@ -130,6 +146,12 @@ export const api = {
   register: (data) => request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   updateProfile: (data) => request('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }),
   changePassword: (data) => request('/auth/password', { method: 'PUT', body: JSON.stringify(data) }),
+  uploadAvatar: (file) => {
+    const formData = new FormData()
+    formData.append('avatar', file)
+    return uploadForm('/auth/avatar', formData)
+  },
+  deleteAvatar: () => request('/auth/avatar', { method: 'DELETE' }),
   
   // Password reset
   sendResetToken: (email) => request('/password/forgot', { method: 'POST', body: JSON.stringify({ email }) }),
@@ -263,19 +285,7 @@ export const api = {
     const queryString = new URLSearchParams(params).toString()
     return request(`/documents${queryString ? '?' + queryString : ''}`)
   },
-  uploadDocument: (formData) => {
-    // FormData upload - must NOT set Content-Type (browser sets multipart boundary automatically)
-    const token = getToken()
-    const url = `${API_BASE}/documents`
-    const headers = { 'Accept': 'application/json' }
-    if (token) headers['Authorization'] = `Bearer ${token}`
-    return fetch(url, { method: 'POST', headers, body: formData })
-      .then(async res => {
-        if (res.status === 401) { localStorage.removeItem('amsar-auth'); window.location.href = '/login'; throw new Error('Session expired') }
-        if (!res.ok) { const d = await res.json().catch(() => ({})); throw { message: d.message || `HTTP ${res.status}`, errors: d.errors || {}, status: res.status } }
-        return res.json()
-      })
-  },
+  uploadDocument: (formData) => uploadForm('/documents', formData),
   deleteDocument: (id) => request(`/documents/${id}`, { method: 'DELETE' }),
   
   // Materials

@@ -329,9 +329,9 @@ export default function CameraAttendance({ onCapture, onCancel, type = 'check-in
                 <div className="flex items-center gap-1">
                   <MapPin size={12} />
                   {gpsData ? (
-                    <span className="text-green-400">GPS Active</span>
+                    <span className="text-green-400">GPS Aktif</span>
                   ) : (
-                    <span className="text-yellow-400">Getting GPS...</span>
+                    <span className="text-yellow-400">Mencari GPS...</span>
                   )}
                 </div>
               </div>
@@ -342,7 +342,7 @@ export default function CameraAttendance({ onCapture, onCancel, type = 'check-in
               <div className="bg-gray-50 p-3 rounded-lg text-sm">
                 <div className="flex items-center gap-2 mb-2">
                   <Shield className="text-green-600" size={16} />
-                  <span className="font-medium">GPS Information</span>
+                  <span className="font-medium">Informasi GPS</span>
                 </div>
                 <div className="space-y-1 text-gray-600">
                   <p>Koordinat: {gpsData.latitude.toFixed(6)}, {gpsData.longitude.toFixed(6)}</p>

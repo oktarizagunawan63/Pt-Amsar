@@ -143,8 +143,8 @@ export default function CreateUnplannedVisitPage() {
       const response = await api.createUnplannedVisit(submitData)
       
       const message = user.role === 'sales' 
-        ? 'Unplanned visit berhasil dibuat dan menunggu approval Sales Manager' 
-        : 'Unplanned visit berhasil dibuat'
+        ? 'Visit dadakan berhasil dibuat dan menunggu persetujuan Sales Manager' 
+        : 'Visit dadakan berhasil dibuat'
       
       toast.success(message, { duration: 3000 })
       
@@ -157,7 +157,7 @@ export default function CreateUnplannedVisitPage() {
       console.error('Submit error:', error)
       console.error('Error response:', error.response?.data)
       
-      const errorMessage = error.response?.data?.message || error.message || 'Gagal membuat unplanned visit'
+      const errorMessage = error.response?.data?.message || error.message || 'Gagal membuat visit dadakan'
       toast.error(errorMessage)
     } finally {
       setSubmitting(false)
@@ -180,7 +180,7 @@ export default function CreateUnplannedVisitPage() {
             <Camera className="text-blue-600" size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Tambah Unplanned Visit</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Tambah Visit Dadakan</h1>
             <p className="text-gray-600">Dokumentasi kunjungan tidak terencana</p>
           </div>
         </div>
@@ -390,7 +390,7 @@ export default function CreateUnplannedVisitPage() {
 
         {/* Photo with GPS */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">4. Foto Bukti + GPS Location</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">4. Foto Bukti + Lokasi GPS</h2>
           
           {!photoData ? (
             <button
@@ -414,7 +414,7 @@ export default function CreateUnplannedVisitPage() {
                 <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
                   <MapPin size={20} className="text-green-600" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-green-900">GPS Location Terdeteksi</p>
+                    <p className="text-sm font-medium text-green-900">Lokasi GPS Terdeteksi</p>
                     <p className="text-xs text-green-700 font-mono">
                       {formData.latitude}, {formData.longitude}
                     </p>
@@ -448,7 +448,7 @@ export default function CreateUnplannedVisitPage() {
             disabled={submitting || loading}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
-            {submitting ? 'Menyimpan...' : 'Simpan Unplanned Visit'}
+            {submitting ? 'Menyimpan...' : 'Simpan Visit Dadakan'}
           </button>
         </div>
       </form>

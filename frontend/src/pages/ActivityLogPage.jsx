@@ -32,7 +32,7 @@ export default function ActivityLogPage() {
   if (loading) {
     return (
       <div className="space-y-5">
-        <h1 className="text-xl font-bold text-gray-900">Activity Log</h1>
+        <h1 className="text-xl font-bold text-gray-900">Log Aktivitas</h1>
         <div className="card p-8 text-center text-gray-500">
           <div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2"></div>
           Memuat activity log...
@@ -44,7 +44,7 @@ export default function ActivityLogPage() {
   if (error) {
     return (
       <div className="space-y-5">
-        <h1 className="text-xl font-bold text-gray-900">Activity Log</h1>
+        <h1 className="text-xl font-bold text-gray-900">Log Aktivitas</h1>
         <div className="card p-8 text-center text-red-500">
           <p>Error: {error}</p>
           <button 
@@ -61,7 +61,7 @@ export default function ActivityLogPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Activity Log</h1>
+        <h1 className="text-xl font-bold text-gray-900">Log Aktivitas</h1>
         <span className="text-xs text-gray-400">{activities.length} aktivitas</span>
       </div>
 

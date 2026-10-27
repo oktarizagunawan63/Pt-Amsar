@@ -782,7 +782,7 @@ export default function ProjectsPage() {
           <div className="w-full flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock size={16} className="text-gray-400" />
-              <h3 className="text-sm font-semibold text-gray-700">History Proyek Selesai</h3>
+              <h3 className="text-sm font-semibold text-gray-700">Riwayat Proyek Selesai</h3>
               <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{filteredCompleted.length}</span>
             </div>
             <button onClick={() => setShowHistory(v => !v)} className="text-gray-400 hover:text-gray-600">

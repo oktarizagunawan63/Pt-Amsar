@@ -343,14 +343,14 @@ export default function RealisasiVisitsPage() {
   }
 
   const handleApproveUnplanned = async (visitId) => {
-    if (!window.confirm('Approve unplanned visit ini?')) return
+    if (!window.confirm('Setujui visit dadakan ini?')) return
     
     try {
       await api.approveUnplannedVisit(visitId)
-      toast.success('Unplanned visit berhasil diapprove')
+      toast.success('Visit dadakan disetujui')
       fetchData()
     } catch (error) {
-      toast.error(error.message || 'Gagal approve unplanned visit')
+      toast.error(error.message || 'Gagal menyetujui visit dadakan')
     }
   }
 
@@ -360,10 +360,10 @@ export default function RealisasiVisitsPage() {
     
     try {
       await api.rejectUnplannedVisit(visitId, reason)
-      toast.success('Unplanned visit berhasil direject')
+      toast.success('Visit dadakan ditolak')
       fetchData()
     } catch (error) {
-      toast.error(error.message || 'Gagal reject unplanned visit')
+      toast.error(error.message || 'Gagal menolak visit dadakan')
     }
   }
 
@@ -628,7 +628,7 @@ export default function RealisasiVisitsPage() {
     },
     {
       key: 'gps',
-      label: 'GPS Coordinates',
+      label: 'Koordinat GPS',
       render: (realisasi) => {
         const hasGPS = realisasi.latitude && realisasi.longitude
         
@@ -741,7 +741,7 @@ export default function RealisasiVisitsPage() {
             className="bg-blue-600 hover:bg-blue-700"
           >
             <Plus size={16} />
-            Tambah Unplanned Visit
+            Tambah Visit Dadakan
           </Button>
         )}
         </div>
@@ -758,7 +758,7 @@ export default function RealisasiVisitsPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            Pending Visits
+            Belum Direalisasi
             {Array.isArray(pendingVisits) && pendingVisits.length > 0 && (
               <span className="ml-2 bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded-full">
                 {pendingVisits.length}
@@ -775,7 +775,7 @@ export default function RealisasiVisitsPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              Unplanned Approval
+              Persetujuan Visit Dadakan
               {pendingUnplannedVisits.length > 0 && (
                 <span className="ml-2 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
                   {pendingUnplannedVisits.length}
@@ -793,7 +793,7 @@ export default function RealisasiVisitsPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              My Unplanned Visits
+              Visit Dadakan Saya
               {myUnplannedVisits.length > 0 && (
                 <span className="ml-2 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
                   {myUnplannedVisits.length}
@@ -820,7 +820,7 @@ export default function RealisasiVisitsPage() {
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-4">
           <Clock className="text-orange-500" size={20} />
-          <h2 className="text-lg font-semibold text-gray-900">Pending Visits</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Belum Direalisasi</h2>
           <span className="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full">
             {Array.isArray(pendingVisits) ? pendingVisits.length : 0}
           </span>
@@ -840,7 +840,7 @@ export default function RealisasiVisitsPage() {
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <Clock className="text-blue-500" size={20} />
-            <h2 className="text-lg font-semibold text-gray-900">Pending Approval - Unplanned Visits</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Menunggu Persetujuan - Visit Dadakan</h2>
             <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
               {pendingUnplannedVisits.length}
             </span>
@@ -921,7 +921,7 @@ export default function RealisasiVisitsPage() {
             ]}
             data={Array.isArray(pendingUnplannedVisits) ? pendingUnplannedVisits : []}
             loading={loading}
-            emptyMessage="Tidak ada unplanned visit yang pending approval"
+            emptyMessage="Tidak ada visit dadakan yang menunggu persetujuan"
           />
         </div>
       )}
@@ -931,7 +931,7 @@ export default function RealisasiVisitsPage() {
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <MapPin className="text-blue-500" size={20} />
-            <h2 className="text-lg font-semibold text-gray-900">My Unplanned Visits</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Visit Dadakan Saya</h2>
             <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
               {myUnplannedVisits.length}
             </span>
@@ -945,7 +945,7 @@ export default function RealisasiVisitsPage() {
             ) : !Array.isArray(myUnplannedVisits) || myUnplannedVisits.length === 0 ? (
               <div className="col-span-full text-center py-12">
                 <MapPin className="text-gray-300 mx-auto mb-3" size={48} />
-                <p className="text-gray-500">Belum ada unplanned visit</p>
+                <p className="text-gray-500">Belum ada visit dadakan</p>
               </div>
             ) : (
               paginatedMyUnplannedVisits.map((visit) => (
@@ -970,7 +970,7 @@ export default function RealisasiVisitsPage() {
                     </div>
                   </div>
                   <div className="space-y-1 text-sm text-gray-600 mb-3">
-                    <p><span className="font-medium">Date:</span> {new Date(visit.visit_date).toLocaleDateString('id-ID')}</p>
+                    <p><span className="font-medium">Tanggal:</span> {new Date(visit.visit_date).toLocaleDateString('id-ID')}</p>
                     <p><span className="font-medium">Purpose:</span> {visit.visit_purpose}</p>
                     {visit.visit_outcome && (
                       <p><span className="font-medium">Outcome:</span> {VISIT_OUTCOME_META[visit.visit_outcome]?.label || visit.visit_outcome}</p>
@@ -978,7 +978,7 @@ export default function RealisasiVisitsPage() {
                   </div>
                   {visit.approval_status === 'rejected' && visit.rejection_reason && (
                     <div className="mt-2 p-2 bg-red-50 rounded border border-red-200">
-                      <p className="text-xs font-medium text-red-700">Rejection Reason:</p>
+                      <p className="text-xs font-medium text-red-700">Alasan Penolakan:</p>
                       <p className="text-xs text-red-600">{visit.rejection_reason}</p>
                     </div>
                   )}
@@ -996,7 +996,7 @@ export default function RealisasiVisitsPage() {
             pageSize={PAGE_SIZE}
             total={myUnplannedTotal}
             onPageChange={setMyUnplannedPage}
-            label="unplanned visit"
+            label="visit dadakan"
           />
         </div>
       )}
@@ -1335,7 +1335,7 @@ export default function RealisasiVisitsPage() {
           <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto m-4">
             <div className="flex items-center gap-2 mb-4">
               <MapPin className="text-blue-600" size={20} />
-              <h2 className="text-lg font-semibold">Tambah Unplanned Visit</h2>
+              <h2 className="text-lg font-semibold">Tambah Visit Dadakan</h2>
             </div>
 
             {/* Location Status - Show GPS Coordinates Only */}
@@ -1343,7 +1343,7 @@ export default function RealisasiVisitsPage() {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                 <div className="flex items-center gap-2">
                   <Navigation className="text-blue-600" size={16} />
-                  <span className="text-sm font-medium text-blue-800">GPS Coordinates</span>
+                  <span className="text-sm font-medium text-blue-800">Koordinat GPS</span>
                 </div>
                 <p className="text-xs text-blue-700 mt-1 font-mono">
                   {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
@@ -1419,8 +1419,8 @@ export default function RealisasiVisitsPage() {
                 await api.createUnplannedVisit(submitData)
                 
                 const message = user.role === 'sales' 
-                  ? 'Unplanned visit berhasil dibuat dan menunggu approval Sales Manager' 
-                  : 'Unplanned visit berhasil dibuat'
+                  ? 'Visit dadakan berhasil dibuat dan menunggu persetujuan Sales Manager' 
+                  : 'Visit dadakan berhasil dibuat'
                 
                 toast.success(message)
                 
@@ -1439,7 +1439,7 @@ export default function RealisasiVisitsPage() {
                 fetchData()
                 
               } catch (error) {
-                toast.error(error.message || 'Gagal menyimpan unplanned visit')
+                toast.error(error.message || 'Gagal menyimpan visit dadakan')
               } finally {
                 setSubmitting(false)
               }
@@ -1653,7 +1653,7 @@ export default function RealisasiVisitsPage() {
               <div className="flex gap-3 pt-4">
                 <Button type="submit" disabled={submitting} className="flex-1 bg-blue-600 hover:bg-blue-700">
                   <CheckCircle size={16} />
-                  Simpan Unplanned Visit
+                  Simpan Visit Dadakan
                 </Button>
                 <Button
                   type="button"
@@ -1759,7 +1759,7 @@ export default function RealisasiVisitsPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">GPS Coordinates</p>
+                    <p className="text-sm text-gray-600">Koordinat GPS</p>
                     <p className="font-medium text-gray-900 text-xs">
                       {selectedPhoto.latitude && selectedPhoto.longitude
                         ? `${parseFloat(selectedPhoto.latitude).toFixed(6)}, ${parseFloat(selectedPhoto.longitude).toFixed(6)}`

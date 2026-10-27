@@ -294,7 +294,7 @@ export default function FunnelFormPage() {
             {selectedCustomer && (
               <div className="mt-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-xs text-green-700">
                 <span>Terisi</span>
-                <span>Data <strong>{selectedCustomer.name}</strong> berhasil diisi otomatis dari Customer List</span>
+                <span>Data <strong>{selectedCustomer.name}</strong> berhasil diisi otomatis dari daftar customer</span>
               </div>
             )}
           </div>
@@ -390,10 +390,10 @@ export default function FunnelFormPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Segment <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Segmen <span className="text-red-500">*</span></label>
               <select name="segment" value={formData.segment} onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-sm" required>
-                <option value="">Pilih Segment</option>
+                <option value="">Pilih Segmen</option>
                 <option value="sot">SOT</option>
                 <option value="igvm">IGVM</option>
                 <option value="nursecall">NurseCall</option>
@@ -403,10 +403,10 @@ export default function FunnelFormPage() {
 
             {formData.segment === 'umum' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Segment Custom <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Segmen Lainnya <span className="text-red-500">*</span></label>
                 <input type="text" name="segment_custom" value={formData.segment_custom} onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
-                  placeholder="Sebutkan segment" required />
+                  placeholder="Sebutkan segmen" required />
               </div>
             )}
 
@@ -428,11 +428,11 @@ export default function FunnelFormPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Deal Stage <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tahap Deal <span className="text-red-500">*</span></label>
               <select name="deal_stage" value={formData.deal_stage} onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-sm" required>
                 <option value="prospek">Prospek</option>
-                <option value="qualified">Qualified</option>
+                <option value="qualified">Kualifikasi</option>
                 <option value="proposal">Proposal</option>
                 <option value="negosiasi">Negosiasi</option>
                 <option value="closing">Closing</option>
@@ -440,18 +440,18 @@ export default function FunnelFormPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Win Probability <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Peluang Menang <span className="text-red-500">*</span></label>
               <select name="win_probability" value={formData.win_probability} onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-sm" required>
-                <option value="low">Low (25%)</option>
-                <option value="middle">Middle (50%)</option>
-                <option value="high">High (75%)</option>
-                <option value="very_high">Very High (90%)</option>
+                <option value="low">Rendah (25%)</option>
+                <option value="middle">Sedang (50%)</option>
+                <option value="high">Tinggi (75%)</option>
+                <option value="very_high">Sangat Tinggi (90%)</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Close Date <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Target Closing <span className="text-red-500">*</span></label>
               <input type="date" name="target_close_date" value={formData.target_close_date} onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-sm" required />
             </div>

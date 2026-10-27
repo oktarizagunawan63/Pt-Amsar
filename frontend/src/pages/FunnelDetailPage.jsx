@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import useAuthStore from '../store/authStore'
 import Button from '../components/ui/Button'
 import toast from 'react-hot-toast'
+import { STAGE_LABELS, PROBABILITY_LABELS, STATUS_LABELS, WON_REASON_LABELS, LOST_REASON_LABELS } from '../lib/funnelLabels'
 
 export default function FunnelDetailPage() {
   const { id } = useParams()
@@ -13,10 +14,12 @@ export default function FunnelDetailPage() {
   const [loading, setLoading] = useState(true)
   const [funnel, setFunnel] = useState(null)
   const [showWonModal, setShowWonModal] = useState(false)
+  const [siteManagers, setSiteManagers] = useState([])
   const [showLostModal, setShowLostModal] = useState(false)
   const [wonForm, setWonForm] = useState({
     won_reason_category: '',
     won_notes: '',
+    site_manager_id: '',
     won_date: new Date().toISOString().split('T')[0]
   })
   const [lostForm, setLostForm] = useState({
@@ -29,6 +32,18 @@ export default function FunnelDetailPage() {
   useEffect(() => {
     fetchData()
   }, [id])
+
+  // The project created on WON goes to the Site Manager picked here.
+  useEffect(() => {
+    if (!showWonModal) return
+    api.getFunnelSiteManagers()
+      .then((res) => {
+        const list = res.data || []
+        setSiteManagers(list)
+        if (list.length === 1) setWonForm((prev) => ({ ...prev, site_manager_id: String(list[0].id) }))
+      })
+      .catch(() => toast.error('Gagal memuat daftar Site Manager'))
+  }, [showWonModal])
 
   const fetchData = async () => {
     try {
@@ -53,7 +68,7 @@ export default function FunnelDetailPage() {
     }
     
     try {
-      await api.markFunnelAsWon(id, wonForm)
+      await api.markFunnelAsWon(id, { ...wonForm, site_manager_id: wonForm.site_manager_id || undefined })
       toast.success('Funnel berhasil ditandai sebagai menang!')
       setShowWonModal(false)
       
@@ -61,7 +76,7 @@ export default function FunnelDetailPage() {
       navigate('/funnels', { state: { refreshStats: true, timestamp: Date.now() } })
     } catch (error) {
       console.error('Error marking as won:', error)
-      toast.error('Gagal menandai sebagai menang')
+      toast.error(error.message || 'Gagal menandai sebagai menang')
     }
   }
 
@@ -100,13 +115,7 @@ export default function FunnelDetailPage() {
       closing: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
     }
     
-    const labels = {
-      prospek: 'Prospect',
-      qualified: 'Qualified',
-      proposal: 'Proposal',
-      negosiasi: 'Negotiation',
-      closing: 'Closing'
-    }
+    const labels = STAGE_LABELS
     
     return <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${badges[stage]}`}>{labels[stage]}</span>
   }
@@ -119,12 +128,7 @@ export default function FunnelDetailPage() {
       very_high: 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200'
     }
     
-    const labels = {
-      low: 'Low',
-      middle: 'Medium',
-      high: 'High',
-      very_high: 'Very High'
-    }
+    const labels = PROBABILITY_LABELS
     
     return <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${badges[probability]}`}>{labels[probability]}</span>
   }
@@ -136,11 +140,7 @@ export default function FunnelDetailPage() {
       lost: 'bg-red-50 text-red-700 ring-1 ring-red-200'
     }
     
-    const labels = {
-      open: 'Open',
-      won: 'Won',
-      lost: 'Lost'
-    }
+    const labels = STATUS_LABELS
     
     return <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${badges[status]}`}>{labels[status]}</span>
   }
@@ -152,7 +152,7 @@ export default function FunnelDetailPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
-          <p className="text-gray-600 font-medium">Loading deal...</p>
+          <p className="text-gray-600 font-medium">Memuat deal...</p>
         </div>
       </div>
     )
@@ -237,11 +237,11 @@ export default function FunnelDetailPage() {
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Deal Stage</p>
+                <p className="text-sm text-gray-600 mb-1">Tahap Deal</p>
                 {getDealStageBadge(funnel.deal_stage)}
               </div>
               <div>
-                <p className="text-sm text-gray-600 mb-1">Win Probability</p>
+                <p className="text-sm text-gray-600 mb-1">Peluang Menang</p>
                 {getWinProbabilityBadge(funnel.win_probability)}
                 <span className="ml-2 text-sm text-gray-700">({funnel.win_percentage}%)</span>
               </div>
@@ -250,7 +250,7 @@ export default function FunnelDetailPage() {
                 <p className="text-lg font-semibold text-gray-900">{funnel.qty} {funnel.unit}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600 mb-1">Close Date</p>
+                <p className="text-sm text-gray-600 mb-1">Target Closing</p>
                 <p className="text-sm font-medium text-gray-900">
                   {new Date(funnel.target_close_date).toLocaleDateString('id-ID', { 
                     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
@@ -276,7 +276,7 @@ export default function FunnelDetailPage() {
                 {funnel.province && <p className="text-sm text-gray-700">{funnel.province}</p>}
               </div>
               <div>
-                <p className="text-sm text-gray-600">Channel & Segment</p>
+                <p className="text-sm text-gray-600">Channel & Segmen</p>
                 <p className="text-sm font-medium text-gray-900 capitalize">
                   {funnel.channel === 'lainnya' ? funnel.channel_other : funnel.channel.replace('_', ' ')}
                 </p>
@@ -318,23 +318,23 @@ export default function FunnelDetailPage() {
               </h3>
               <div className="space-y-2">
                 <div>
-                  <p className="text-xs text-green-700">Estimated Value</p>
+                  <p className="text-xs text-green-700">Nilai Estimasi</p>
                   <p className="text-lg font-bold text-green-900">
                     Rp {Number(funnel.estimated_value).toLocaleString('id-ID')}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-green-700">Reason</p>
-                  <p className="text-sm text-green-900 capitalize">{funnel.won_reason_category?.replace('_', ' ')}</p>
+                  <p className="text-xs text-green-700">Alasan</p>
+                  <p className="text-sm text-green-900">{WON_REASON_LABELS[funnel.won_reason_category] || funnel.won_reason_category}</p>
                 </div>
                 {funnel.won_notes && (
                   <div>
-                    <p className="text-xs text-green-700">Notes</p>
+                    <p className="text-xs text-green-700">Catatan</p>
                     <p className="text-sm text-green-900">{funnel.won_notes}</p>
                   </div>
                 )}
                 <div>
-                  <p className="text-xs text-green-700">Won Date</p>
+                  <p className="text-xs text-green-700">Tanggal Menang</p>
                   <p className="text-sm text-green-900">
                     {new Date(funnel.won_date).toLocaleDateString('id-ID')}
                   </p>
@@ -350,23 +350,23 @@ export default function FunnelDetailPage() {
               </h3>
               <div className="space-y-2">
                 <div>
-                  <p className="text-xs text-red-700">Reason</p>
-                  <p className="text-sm text-red-900 capitalize">{funnel.lost_reason_category?.replace('_', ' ')}</p>
+                  <p className="text-xs text-red-700">Alasan</p>
+                  <p className="text-sm text-red-900">{LOST_REASON_LABELS[funnel.lost_reason_category] || funnel.lost_reason_category}</p>
                 </div>
                 {funnel.lost_competitor && (
                   <div>
-                    <p className="text-xs text-red-700">Lost to Competitor</p>
+                    <p className="text-xs text-red-700">Kalah dari Kompetitor</p>
                     <p className="text-sm text-red-900">{funnel.lost_competitor}</p>
                   </div>
                 )}
                 {funnel.lost_notes && (
                   <div>
-                    <p className="text-xs text-red-700">Notes</p>
+                    <p className="text-xs text-red-700">Catatan</p>
                     <p className="text-sm text-red-900">{funnel.lost_notes}</p>
                   </div>
                 )}
                 <div>
-                  <p className="text-xs text-red-700">Lost Date</p>
+                  <p className="text-xs text-red-700">Tanggal Kalah</p>
                   <p className="text-sm text-red-900">
                     {new Date(funnel.lost_date).toLocaleDateString('id-ID')}
                   </p>
@@ -382,9 +382,27 @@ export default function FunnelDetailPage() {
       {showWonModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Mark as Won</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Tandai Menang</h2>
             <form onSubmit={handleMarkAsWon}>
               <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Site Manager Penerima Proyek <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={wonForm.site_manager_id}
+                    onChange={(e) => setWonForm(prev => ({ ...prev, site_manager_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                    required={siteManagers.length > 0}
+                  >
+                    <option value="">Pilih Site Manager</option>
+                    {siteManagers.map((sm) => (
+                      <option key={sm.id} value={sm.id}>{sm.name}</option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">Proyek dari deal ini otomatis dibuat dan diserahkan ke Site Manager ini.</p>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Kategori Alasan Menang <span className="text-red-500">*</span>
@@ -449,7 +467,7 @@ export default function FunnelDetailPage() {
       {showLostModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Mark as Lost</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Tandai Kalah</h2>
             <form onSubmit={handleMarkAsLost}>
               <div className="space-y-4">
                 <div>

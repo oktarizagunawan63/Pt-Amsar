@@ -349,7 +349,7 @@ export default function VisitReportsPage() {
       {isSalesManager && salesPerformance.length > 0 && (
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-slate-800">Performance Per Sales</h2>
+            <h2 className="text-sm font-semibold text-slate-800">Performa per Sales</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">

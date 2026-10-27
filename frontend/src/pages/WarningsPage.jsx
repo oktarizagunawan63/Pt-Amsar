@@ -174,7 +174,7 @@ export default function WarningsPage() {
       {/* Header */}
       <div className="header-responsive">
         <div>
-          <h1 className="header-title">Pusat Warning</h1>
+          <h1 className="header-title">Pusat Peringatan</h1>
           <p className="header-subtitle">Daftar masalah operasional yang perlu dicek, seperti visit terlewat atau absensi bermasalah.</p>
         </div>
         
@@ -205,7 +205,7 @@ export default function WarningsPage() {
         <div className="stats-card" style={{ borderLeft: '4px solid #de168c' }}>
           <div className="stats-card-header">
             <div>
-              <p className="stats-card-label">Total Warning</p>
+              <p className="stats-card-label">Total Peringatan</p>
               <p className="stats-card-value" style={{ color: '#de168c' }}>{warningStats.total || 0}</p>
             </div>
             <div className="stats-card-icon" style={{ background: '#de168c' }}>
@@ -255,7 +255,7 @@ export default function WarningsPage() {
       <div className="filter-panel">
         <h2 className="filter-title">
           <Filter size={18} />
-          Filter Warning
+          Filter Peringatan
         </h2>
         
         <div className="form-row-responsive sm-2 md-3">

@@ -5,6 +5,8 @@ import { api } from '../lib/api'
 import { exportToCSV } from '../lib/exportExcel'
 import useAuthStore from '../store/authStore'
 import toast from 'react-hot-toast'
+import { formatRupiah } from '../lib/formatRupiah'
+import { STAGE_LABELS, PROBABILITY_LABELS, STATUS_LABELS } from '../lib/funnelLabels'
 
 const FUNNEL_CSV_COLUMNS = [
   { key: 'customer_name', label: 'Customer' },
@@ -15,10 +17,10 @@ const FUNNEL_CSV_COLUMNS = [
   { key: 'segment', label: 'Segmen', value: (r) => r.segment === 'umum' ? (r.segment_custom || 'Umum') : (r.segment || '-') },
   { key: 'qty', label: 'Qty', value: (r) => `${r.qty ?? ''} ${r.unit ?? ''}`.trim() },
   { key: 'estimated_value', label: 'Estimasi Nilai', value: (r) => r.estimated_value ? `Rp ${Number(r.estimated_value).toLocaleString('id-ID')}` : '-' },
-  { key: 'deal_stage', label: 'Stage', value: (r) => ({ prospek: 'Prospect', qualified: 'Qualified', proposal: 'Proposal', negosiasi: 'Negotiation', closing: 'Closing' }[r.deal_stage] || r.deal_stage || '-') },
-  { key: 'win_probability', label: 'Probabilitas', value: (r) => ({ low: 'Low', middle: 'Medium', high: 'High', very_high: 'Very High' }[r.win_probability] || '-') },
-  { key: 'target_close_date', label: 'Close Date', value: (r) => r.target_close_date ? new Date(r.target_close_date).toLocaleDateString('id-ID') : '-' },
-  { key: 'status', label: 'Status', value: (r) => ({ open: 'Open', won: 'Won', lost: 'Lost' }[r.status] || '-') },
+  { key: 'deal_stage', label: 'Tahap', value: (r) => STAGE_LABELS[r.deal_stage] || r.deal_stage || '-' },
+  { key: 'win_probability', label: 'Peluang', value: (r) => PROBABILITY_LABELS[r.win_probability] || '-' },
+  { key: 'target_close_date', label: 'Target Closing', value: (r) => r.target_close_date ? new Date(r.target_close_date).toLocaleDateString('id-ID') : '-' },
+  { key: 'status', label: 'Status', value: (r) => STATUS_LABELS[r.status] || '-' },
   { key: 'assigned_user', label: 'Sales', value: (r) => r.assigned_user?.name || '-' },
 ]
 
@@ -158,13 +160,7 @@ export default function FunnelsPage() {
       closing: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
     }
     
-    const labels = {
-      prospek: 'Prospect',
-      qualified: 'Qualified',
-      proposal: 'Proposal',
-      negosiasi: 'Negotiation',
-      closing: 'Closing'
-    }
+    const labels = STAGE_LABELS
     
     return (
       <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${badges[stage]}`}>
@@ -181,12 +177,7 @@ export default function FunnelsPage() {
       very_high: 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200'
     }
     
-    const labels = {
-      low: 'Low',
-      middle: 'Medium',
-      high: 'High',
-      very_high: 'Very High'
-    }
+    const labels = PROBABILITY_LABELS
     
     return (
       <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${badges[probability]}`}>
@@ -202,11 +193,7 @@ export default function FunnelsPage() {
       lost: 'bg-red-50 text-red-700 ring-1 ring-red-200'
     }
     
-    const labels = {
-      open: 'Open',
-      won: 'Won',
-      lost: 'Lost'
-    }
+    const labels = STATUS_LABELS
     
     return (
       <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${badges[status]}`}>
@@ -244,19 +231,19 @@ export default function FunnelsPage() {
         {stats && (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-slate-500">Active Deals</p>
+              <p className="text-sm font-medium text-slate-500">Deal Aktif</p>
               <p className="mt-3 text-3xl font-bold text-slate-950">{stats.total_deal_open || 0}</p>
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-slate-500">Won This Month</p>
+              <p className="text-sm font-medium text-slate-500">Nilai Menang Bulan Ini</p>
               <p className="mt-3 text-3xl font-bold text-slate-950">
-                {(Number(stats.total_menang_bulan_ini || 0) / 1000000).toFixed(1)}M
+                {formatRupiah(stats.total_menang_bulan_ini)}
               </p>
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-slate-500">Win Rate</p>
+              <p className="text-sm font-medium text-slate-500">Tingkat Menang</p>
               <p className="mt-3 text-3xl font-bold text-slate-950">{stats.win_rate_bulan_ini || 0}%</p>
               <p className="mt-1 text-xs text-slate-400">Bulan ini</p>
             </div>
@@ -271,7 +258,7 @@ export default function FunnelsPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="text"
-                placeholder="Search customer, company, or location..."
+                placeholder="Cari customer, perusahaan, atau lokasi..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
                 className="w-full rounded-xl border border-slate-300 py-2.5 pl-11 pr-4 text-sm focus:border-[#237043] focus:outline-none focus:ring-2 focus:ring-[#237043]/15"
@@ -293,7 +280,7 @@ export default function FunnelsPage() {
               className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 focus:border-[#237043] focus:outline-none focus:ring-2 focus:ring-[#237043]/15"
             >
               <option value="created_at">Terbaru</option>
-              <option value="deadline_terdekat">Close Date</option>
+              <option value="deadline_terdekat">Target Closing Terdekat</option>
               <option value="last_update">Update Terakhir</option>
             </select>
           </div>
@@ -306,10 +293,10 @@ export default function FunnelsPage() {
                   onChange={(e) => handleFilterChange('status', e.target.value)}
                   className="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-[#237043] focus:outline-none focus:ring-2 focus:ring-[#237043]/15"
                 >
-                  <option value="">All Status</option>
-                  <option value="open">Open</option>
-                  <option value="won">Won</option>
-                  <option value="lost">Lost</option>
+                  <option value="">Semua Status</option>
+                  <option value="open">Berjalan</option>
+                  <option value="won">Menang</option>
+                  <option value="lost">Kalah</option>
                 </select>
 
                 <select
@@ -317,11 +304,11 @@ export default function FunnelsPage() {
                   onChange={(e) => handleFilterChange('segment', e.target.value)}
                   className="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-[#237043] focus:outline-none focus:ring-2 focus:ring-[#237043]/15"
                 >
-                  <option value="">All Segments</option>
+                  <option value="">Semua Segmen</option>
                   <option value="sot">SOT</option>
                   <option value="igvm">IGVM</option>
                   <option value="nursecall">NurseCall</option>
-                  <option value="umum">General</option>
+                  <option value="umum">Umum</option>
                 </select>
 
                 <select
@@ -329,14 +316,14 @@ export default function FunnelsPage() {
                   onChange={(e) => handleFilterChange('channel', e.target.value)}
                   className="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-[#237043] focus:outline-none focus:ring-2 focus:ring-[#237043]/15"
                 >
-                  <option value="">All Channels</option>
-                  <option value="kontraktor">Contractor</option>
+                  <option value="">Semua Channel</option>
+                  <option value="kontraktor">Kontraktor</option>
                   <option value="subdist">Subdist</option>
                   <option value="rsud">RSUD</option>
-                  <option value="rs_swasta">Private Hospital</option>
-                  <option value="klinik">Clinic</option>
+                  <option value="rs_swasta">RS Swasta</option>
+                  <option value="klinik">Klinik</option>
                   <option value="puskesmas">Puskesmas</option>
-                  <option value="lainnya">Other</option>
+                  <option value="lainnya">Lainnya</option>
                 </select>
 
                 <select
@@ -344,11 +331,11 @@ export default function FunnelsPage() {
                   onChange={(e) => handleFilterChange('deal_stage', e.target.value)}
                   className="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-[#237043] focus:outline-none focus:ring-2 focus:ring-[#237043]/15"
                 >
-                  <option value="">All Stages</option>
-                  <option value="prospek">Prospect</option>
-                  <option value="qualified">Qualified</option>
+                  <option value="">Semua Tahap</option>
+                  <option value="prospek">Prospek</option>
+                  <option value="qualified">Kualifikasi</option>
                   <option value="proposal">Proposal</option>
-                  <option value="negosiasi">Negotiation</option>
+                  <option value="negosiasi">Negosiasi</option>
                   <option value="closing">Closing</option>
                 </select>
 
@@ -357,11 +344,11 @@ export default function FunnelsPage() {
                   onChange={(e) => handleFilterChange('win_probability', e.target.value)}
                   className="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-[#237043] focus:outline-none focus:ring-2 focus:ring-[#237043]/15"
                 >
-                  <option value="">All Probability</option>
-                  <option value="low">Low</option>
-                  <option value="middle">Middle</option>
-                  <option value="high">High</option>
-                  <option value="very_high">Very High</option>
+                  <option value="">Semua Peluang</option>
+                  <option value="low">Rendah</option>
+                  <option value="middle">Sedang</option>
+                  <option value="high">Tinggi</option>
+                  <option value="very_high">Sangat Tinggi</option>
                 </select>
               </div>
               
@@ -385,7 +372,7 @@ export default function FunnelsPage() {
             <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
               <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-[#237043]"></div>
             </div>
-            <p className="text-gray-600 font-medium">Loading deals...</p>
+            <p className="text-gray-600 font-medium">Memuat deal...</p>
           </div>
         ) : funnels.length === 0 ? (
           <div className="p-16 text-center">
@@ -405,15 +392,15 @@ export default function FunnelsPage() {
                 <tr className="border-b border-slate-200 bg-slate-50">
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Customer</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Channel</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Location</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Segment</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Quantity</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Stage</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Close Date</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Probability</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Lokasi</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Segmen</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Jumlah</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Tahap</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Target Closing</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Peluang</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Sales</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">

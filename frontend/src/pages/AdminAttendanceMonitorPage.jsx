@@ -23,7 +23,7 @@ const ATTENDANCE_CSV_COLUMNS = [
     return `${h}j ${m}m`
   }},
   { key: 'status', label: 'Status', value: (r) => !r.check_in_time ? 'Tidak Hadir' : !r.check_out_time ? 'Sedang Bekerja' : 'Selesai' },
-  { key: 'gps_warning', label: 'GPS Warning', value: (r) => (r.gps_warning || r.gps_warnings?.length > 0) ? 'Ya' : 'Normal' },
+  { key: 'gps_warning', label: 'Peringatan GPS', value: (r) => (r.gps_warning || r.gps_warnings?.length > 0) ? 'Ya' : 'Normal' },
 ]
 
 // Helper functions
@@ -121,7 +121,7 @@ export default function AdminAttendanceMonitorPage() {
       return (
         <div className="flex items-center gap-1">
           <AlertTriangle size={14} className="text-orange-500" />
-          <span className="text-xs text-orange-600">GPS Warning</span>
+          <span className="text-xs text-orange-600">Peringatan GPS</span>
         </div>
       )
     }
@@ -236,7 +236,7 @@ export default function AdminAttendanceMonitorPage() {
     },
     {
       key: 'gps_warning',
-      label: 'GPS Warning',
+      label: 'Peringatan GPS',
       render: (attendance) => getGpsWarningBadge(attendance)
     },
     {
@@ -249,7 +249,7 @@ export default function AdminAttendanceMonitorPage() {
   return (
     <div className="p-6">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Attendance Monitor</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Monitor Absensi</h1>
         <p className="text-gray-600">Monitor kehadiran seluruh karyawan</p>
       </div>
 

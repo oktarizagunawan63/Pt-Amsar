@@ -322,7 +322,7 @@ export default function PlanVisitsPage() {
               </div>
               <div className="mt-3 p-3 bg-blue-100 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  Untuk menyelesaikan visit, buka halaman <strong>Realisasi Visit</strong>, tab <strong>Pending Visits</strong>, lalu klik <strong>Mulai Visit</strong>
+                  Untuk menyelesaikan visit, buka halaman <strong>Realisasi Visit</strong>, tab <strong>Belum Direalisasi</strong>, lalu klik <strong>Mulai Visit</strong>
                 </p>
               </div>
             </div>
@@ -750,7 +750,7 @@ export default function PlanVisitsPage() {
                   )}
                   <div className="flex items-center gap-2">
                     <User size={16} className="text-blue-600" />
-                    <span className="text-sm text-gray-600 w-28">Assigned To:</span>
+                    <span className="text-sm text-gray-600 w-28">Ditugaskan ke:</span>
                     <span className="text-sm font-medium text-gray-900">
                       {detailVisit.assigned_to_user?.name || detailVisit.assignedUser?.name || 'Unassigned'}
                     </span>

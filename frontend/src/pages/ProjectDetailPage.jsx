@@ -518,10 +518,10 @@ export default function ProjectDetailPage() {
       <div className="card p-0">
         <div className="flex border-b border-gray-100">
           {[
-            { id: 'overview', label: 'Overview', icon: BarChart3 },
-            { id: 'engineers', label: 'Engineers', icon: Users },
-            { id: 'progress', label: 'Progress Reports', icon: TrendingUp },
-            { id: 'documents', label: 'Documents', icon: FolderOpen },
+            { id: 'overview', label: 'Ringkasan', icon: BarChart3 },
+            { id: 'engineers', label: 'Engineer', icon: Users },
+            { id: 'progress', label: 'Laporan Progress', icon: TrendingUp },
+            { id: 'documents', label: 'Dokumen', icon: FolderOpen },
             { id: 'rab', label: 'RAB', icon: DollarSign }
           ].map(tab => (
             <button
@@ -545,18 +545,18 @@ export default function ProjectDetailPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Project Information</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Informasi Proyek</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Description:</span>
-                      <span className="text-sm text-gray-800">{project.description || 'No description'}</span>
+                      <span className="text-sm text-gray-500">Deskripsi:</span>
+                      <span className="text-sm text-gray-800">{project.description || 'Tidak ada deskripsi'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Location:</span>
+                      <span className="text-sm text-gray-500">Lokasi:</span>
                       <span className="text-sm text-gray-800">{project.location}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Created:</span>
+                      <span className="text-sm text-gray-500">Dibuat:</span>
                       <span className="text-sm text-gray-800">{project.createdAt ? new Date(project.createdAt).toLocaleDateString('id-ID') : '-'}</span>
                     </div>
                     <div className="flex justify-between">
@@ -566,22 +566,22 @@ export default function ProjectDetailPage() {
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Quick Stats</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Ringkasan Cepat</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-500">Progress:</span>
                       <span className="text-sm font-semibold text-gray-800">{progressVal}%</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Materials:</span>
-                      <span className="text-sm text-gray-800">{materials.length} items</span>
+                      <span className="text-sm text-gray-500">Material:</span>
+                      <span className="text-sm text-gray-800">{materials.length} item</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Documents:</span>
-                      <span className="text-sm text-gray-800">{docs.length} files</span>
+                      <span className="text-sm text-gray-500">Dokumen:</span>
+                      <span className="text-sm text-gray-800">{docs.length} file</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Budget Usage:</span>
+                      <span className="text-sm text-gray-500">Pemakaian Anggaran:</span>
                       <span className="text-sm text-gray-800">{Math.round((project.realisasi || 0) / project.rab * 100)}%</span>
                     </div>
                   </div>
@@ -631,7 +631,7 @@ export default function ProjectDetailPage() {
           {activeTab === 'engineers' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-900">Assigned Engineers</h3>
+                <h3 className="text-sm font-semibold text-gray-900">Engineer yang Ditugaskan</h3>
                 {!isCompleted && canManageProject && (
                   <button onClick={handleOpenTeamModal} className="flex items-center gap-1.5 text-xs text-[#237043] hover:underline">
                     <Plus size={13}/> Assign Engineer
@@ -675,7 +675,7 @@ export default function ProjectDetailPage() {
           {activeTab === 'progress' && (
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-gray-900">Progress Reports</h3>
+                  <h3 className="text-sm font-semibold text-gray-900">Laporan Progress</h3>
                   {!isCompleted && canSubmitProjectProgress && (
                     <button onClick={() => setShowProgressModal(true)} className="flex items-center gap-1.5 text-xs text-[#237043] hover:underline">
                       <Plus size={13}/> Add Report
@@ -683,8 +683,8 @@ export default function ProjectDetailPage() {
                   )}
                 </div>
               <div className="text-center py-8 text-gray-400">
-                <p className="text-sm">Progress reports will be implemented here</p>
-                <p className="text-xs mt-1">Engineers can submit progress with photos</p>
+                <p className="text-sm">Daftar laporan progress belum tersedia di halaman ini</p>
+                <p className="text-xs mt-1">Engineer mengirim progress beserta foto dari menu Laporan Progress</p>
               </div>
             </div>
           )}
@@ -693,7 +693,7 @@ export default function ProjectDetailPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-sm font-semibold text-gray-900">Project Documents</h3>
+                  <h3 className="text-sm font-semibold text-gray-900">Dokumen Proyek</h3>
                   <div className="flex gap-1">
                     {['semua','foto','laporan'].map(tab => (
                       <button key={tab} onClick={() => setDocTab(tab)}
@@ -703,7 +703,7 @@ export default function ProjectDetailPage() {
                     ))}
                   </div>
                 </div>
-                {!isCompleted && canUploadProjectDocuments && <button onClick={() => setUploadOpen(true)} className="flex items-center gap-1.5 text-xs text-[#237043] hover:underline"><Plus size={13}/> Upload Document</button>}
+                {!isCompleted && canUploadProjectDocuments && <button onClick={() => setUploadOpen(true)} className="flex items-center gap-1.5 text-xs text-[#237043] hover:underline"><Plus size={13}/> Upload Dokumen</button>}
               </div>
 
               {docTab === 'foto' && (() => {
@@ -894,7 +894,7 @@ export default function ProjectDetailPage() {
               </div>
               
               <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">Budget Progress</h4>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Progres Anggaran</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Progress</span>
@@ -920,7 +920,7 @@ export default function ProjectDetailPage() {
       <div className="card">
         <div className="flex items-center gap-2 mb-4">
           <Clock size={16} className="text-gray-400"/>
-          <h3 className="text-sm font-semibold text-gray-700">History Aktivitas</h3>
+          <h3 className="text-sm font-semibold text-gray-700">Riwayat Aktivitas</h3>
           <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{history.length}</span>
         </div>
         <div className="space-y-4">
@@ -1269,7 +1269,7 @@ export default function ProjectDetailPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Side Manager</label>
+              <label className="text-xs font-medium text-gray-600 block mb-1">Site Manager</label>
               <input type="text" value={editForm.pm || ''} onChange={e => setEditForm({...editForm, pm: e.target.value})}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"/>
             </div>

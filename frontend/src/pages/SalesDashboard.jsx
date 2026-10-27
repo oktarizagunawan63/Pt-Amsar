@@ -82,7 +82,7 @@ export default function SalesDashboard() {
               onClick={() => navigate('/create-unplanned-visit')}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              <Plus size={16} /> Unplanned visit
+              <Plus size={16} /> Visit dadakan
             </button>
             <button
               type="button"

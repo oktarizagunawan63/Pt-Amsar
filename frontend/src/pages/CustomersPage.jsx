@@ -309,7 +309,7 @@ export default function CustomersPage() {
           )}
           {user?.role === 'sales' && customer.approval_status === 'approved' && (
             <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded">
-              View Only
+              Hanya Lihat
             </span>
           )}
         </div>
@@ -334,7 +334,7 @@ export default function CustomersPage() {
       {/* Header */}
       <div className="header-responsive">
         <div>
-          <h1 className="header-title">Customer List</h1>
+          <h1 className="header-title">Daftar Customer</h1>
           <p className="header-subtitle">Kelola data customer untuk visit management</p>
         </div>
         
@@ -356,7 +356,7 @@ export default function CustomersPage() {
               <span className="text-white text-xs">!</span>
             </div>
             <div>
-              <p className="text-responsive-base font-medium text-red-800">Error Loading Customers</p>
+              <p className="text-responsive-base font-medium text-red-800">Gagal Memuat Customer</p>
               <p className="text-responsive-sm text-red-600">{error}</p>
               <button 
                 onClick={fetchCustomers}

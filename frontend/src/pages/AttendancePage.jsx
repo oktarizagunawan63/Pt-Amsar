@@ -164,7 +164,7 @@ function AttendancePage() {
 
 
   const handleDeleteAttendance = async (attendance) => {
-    const confirmMessage = `Hapus attendance ${attendance.user?.name || 'user'} pada ${new Date(attendance.date).toLocaleDateString('id-ID')}?`
+    const confirmMessage = `Hapus absensi ${attendance.user?.name || 'user'} pada ${new Date(attendance.date).toLocaleDateString('id-ID')}?`
     
     if (!window.confirm(confirmMessage)) return
     
@@ -304,7 +304,7 @@ function AttendancePage() {
           <button
             onClick={() => handleDeleteAttendance(attendance)}
             className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition-colors"
-            title="Hapus attendance"
+            title="Hapus absensi"
           >
             <Trash2 size={16} />
           </button>
@@ -341,7 +341,7 @@ function AttendancePage() {
       {/* Header */}
       <div className="mb-6 border-b border-slate-200 pb-5">
         <div>
-          <h1 className="text-2xl font-bold text-slate-950">Attendance</h1>
+          <h1 className="text-2xl font-bold text-slate-950">Absensi</h1>
           <p className="mt-1 text-sm text-slate-500">Kelola kehadiran dengan GPS tracking</p>
           <p className="mt-2 text-sm font-medium text-slate-700">{today}</p>
         </div>

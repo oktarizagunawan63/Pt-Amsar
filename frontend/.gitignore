@@ -44,6 +44,3 @@ Thumbs.db
 # Local dev
 *.local
 
-# Editor / AI tool configs
-.vscode/
-skills-lock.json

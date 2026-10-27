@@ -4,3 +4,12 @@ frontend/node_modules.phpunit.result.cache
 .env
 .env.backup
 .env.production
+
+# Laravel runtime files (never commit)
+storage/logs/*.log
+storage/framework/cache/data/
+storage/framework/sessions/*
+!storage/framework/sessions/.gitignore
+storage/framework/views/*
+!storage/framework/views/.gitignore
+.phpunit.result.cache

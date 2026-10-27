@@ -95,18 +95,18 @@
     "plan-visits": {
       "file": "screens/sales_manager/plan-visits.png",
       "box": {
-        "x": 361,
-        "y": 396.5,
-        "width": 1454,
-        "height": 47
+        "x": 394,
+        "y": 344.5,
+        "width": 1391,
+        "height": 20
       }
     },
     "realisasi": {
       "file": "screens/sales_manager/realisasi.png",
       "box": {
-        "x": 470.375,
+        "x": 489.359375,
         "y": 201,
-        "width": 183.9375,
+        "width": 222.984375,
         "height": 34
       }
     },

@@ -6,7 +6,8 @@
     "test": "node --test \"test/**/*.test.ts\"",
     "studio": "remotion studio src/index.ts",
     "render": "remotion render src/index.ts AmsarDemo out/amsar-demo.mp4",
-    "capture": "node capture/capture.ts"
+    "capture": "node capture/capture.ts",
+    "audio": "node audio/synth.ts"
   },
   "dependencies": {
     "@remotion/cli": "4.0.539",

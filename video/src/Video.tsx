@@ -39,7 +39,7 @@ export const Video: React.FC = () => {
           src={staticFile('music.mp3')}
           loop
           volume={(f) =>
-            0.25 * interpolate(f, [0, fade, durationInFrames - fade, durationInFrames], [0, 1, 1, 0], { extrapolateRight: 'clamp' })
+            0.5 * interpolate(f, [0, fade, durationInFrames - fade, durationInFrames], [0, 1, 1, 0], { extrapolateRight: 'clamp' })
           }
         />
       )}

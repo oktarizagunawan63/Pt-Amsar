@@ -1,4 +1,5 @@
-import { AbsoluteFill, Series } from 'remotion';
+import { getStaticFiles } from '@remotion/studio';
+import { AbsoluteFill, Audio, Series, staticFile } from 'remotion';
 import type { Manifest } from '../../capture/manifest';
 import { ChapterMarker } from '../components/ChapterMarker';
 import { Wipe } from '../components/Wipe';
@@ -10,6 +11,8 @@ import { ChapterCard } from './ChapterCard';
 import { MiniFlowchart } from './MiniFlowchart';
 import { Recap } from './Recap';
 import { ScreenshotScene } from './ScreenshotScene';
+
+const hasWhoosh = getStaticFiles().some((f) => f.name === 'whoosh.mp3');
 
 /** silence → wipe → chapter card → mini flowchart → screenshots → recap, with the chapter marker on top. */
 export const Chapter: React.FC<{ role: Role; manifest: Manifest }> = ({ role, manifest }) => {
@@ -23,6 +26,7 @@ export const Chapter: React.FC<{ role: Role; manifest: Manifest }> = ({ role, ma
         </Series.Sequence>
         <Series.Sequence durationInFrames={g.wipe}>
           <Wipe color={role.color} />
+          {hasWhoosh && <Audio src={staticFile('whoosh.mp3')} volume={0.6} />}
         </Series.Sequence>
         <Series.Sequence durationInFrames={g.card}>
           <ChapterCard role={role} />

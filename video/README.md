@@ -13,7 +13,8 @@ Spec: `docs/superpowers/specs/2026-10-27-amsar-demo-video-design.md`
 | `src/scenes/`, `src/components/` | Tampilan video |
 | `capture/` | Script untuk mengisi data demo dan mengambil screenshot dari aplikasi yang berjalan |
 | `public/screens/` | Hasil screenshot + `manifest.json` (posisi highlight) |
-| `public/music.mp3` | Opsional: musik latar, otomatis dipakai kalau file ini ada |
+| `audio/synth.ts` | Membuat musik latar dan efek whoosh dari nol (tanpa sampel, bebas hak cipta) |
+| `public/music.mp3`, `public/whoosh.mp3` | Hasil `npm run audio`; dipakai otomatis kalau file-nya ada |
 
 ## Perintah
 
@@ -24,6 +25,7 @@ npm test          # unit + integration test (butuh MySQL dan backend :8000 untuk
 npm run studio    # preview interaktif di browser
 npm run render    # render ke out/amsar-demo.mp4
 npm run capture   # ambil ulang screenshot (butuh backend :8000 dan frontend :5173)
+npm run audio     # buat ulang public/music.mp3 dan public/whoosh.mp3
 ```
 
 ## Data demo

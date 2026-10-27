@@ -37,7 +37,7 @@ Route::get('/test', function () {
     ]);
 });
 
-Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
 Route::post('/auth/register', [UserController::class, 'register'])->middleware('throttle:3,1');
 
 Route::prefix('password')->middleware('throttle:3,1')->group(function () {

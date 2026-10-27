@@ -80,7 +80,7 @@ class SchedulerTest extends TestCase
         Artisan::call('schedule:list');
         $out = Artisan::output();
 
-        foreach (['projects:refresh-status', 'visits:mark-missed', 'projects:check-deadlines', 'projects:check-budget'] as $command) {
+        foreach (['projects:refresh-status', 'visits:mark-missed', 'projects:check-deadlines', 'projects:check-budget', 'sanctum:prune-expired'] as $command) {
             $this->assertStringContainsString($command, $out);
         }
     }

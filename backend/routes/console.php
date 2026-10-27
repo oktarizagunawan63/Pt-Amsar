@@ -14,3 +14,5 @@ Schedule::command('projects:refresh-status')->dailyAt('00:05')->withoutOverlappi
 Schedule::command('visits:mark-missed')->dailyAt('00:15')->withoutOverlapping();
 Schedule::command('projects:check-deadlines')->dailyAt('08:00')->withoutOverlapping();
 Schedule::command('projects:check-budget')->dailyAt('09:00')->withoutOverlapping();
+// Tokens expire after config('sanctum.expiration'); drop the dead rows a day later.
+Schedule::command('sanctum:prune-expired --hours=24')->dailyAt('03:00');

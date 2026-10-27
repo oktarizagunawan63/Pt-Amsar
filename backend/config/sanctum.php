@@ -7,7 +7,8 @@ return [
         env('APP_URL') ? ','.parse_url(env('APP_URL'), PHP_URL_HOST) : ''
     ))),
     'guard'      => ['web'],
-    'expiration' => null,
+    // Minutes. Users stay signed in on several devices, so a lost device's token must not live forever.
+    'expiration' => (int) env('SANCTUM_EXPIRATION', 60 * 24 * 30),
     'token_prefix' => env('SANCTUM_TOKEN_PREFIX', ''),
     'middleware' => [
         'authenticate_session' => Laravel\Sanctum\Http\Middleware\AuthenticateSession::class,

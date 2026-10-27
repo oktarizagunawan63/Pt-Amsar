@@ -48,9 +48,7 @@ class AuthController extends Controller
             }
         }
 
-        // Revoke old tokens
-        $user->tokens()->delete();
-
+        // One token per device: signing in here leaves the user's other devices signed in.
         $token = $user->createToken('auth_token')->plainTextToken;
 
         ActivityLog::create([

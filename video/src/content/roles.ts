@@ -121,7 +121,7 @@ export const ROLES: Role[] = [
 /** The 11 steps of spec §5; each node is drawn in the color of the role that owns it. */
 export const BIG_FLOW: { label: string; role: RoleId }[] = [
   { label: 'Sales menambah customer', role: 'sales' },
-  { label: 'Manager menyetujui customer & plan visit', role: 'sales_manager' },
+  { label: 'Manager menyetujui customer & visit', role: 'sales_manager' },
   { label: 'Kunjungan dengan GPS & foto', role: 'sales' },
   { label: 'Terlewat → peringatan otomatis', role: 'sales_manager' },
   { label: 'Absensi harian GPS & foto', role: 'sales' },

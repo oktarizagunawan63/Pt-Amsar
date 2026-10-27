@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { zoomTransform } from '../src/lib/zoom.ts';
+import { fitScale, zoomTransform } from '../src/lib/zoom.ts';
 
 const VIEW = { width: 1920, height: 1080 };
 
@@ -18,4 +18,18 @@ test('a box in the bottom-right corner is clamped the other way', () => {
 
 test('scale 1 never translates', () => {
   assert.deepEqual(zoomTransform({ x: 0, y: 0, width: 10, height: 10 }, VIEW, 1), { scale: 1, translateX: 0, translateY: 0 });
+});
+
+test('fitScale zooms a small element up to the maximum', () => {
+  assert.equal(fitScale({ x: 100, y: 100, width: 200, height: 60 }, VIEW, 1.6), 1.6);
+});
+
+test('fitScale keeps a large panel fully visible with a margin', () => {
+  assert.equal(fitScale({ x: 0, y: 100, width: 1600, height: 500 }, VIEW, 1.6), 1);
+  assert.equal(fitScale({ x: 0, y: 0, width: 1200, height: 900 }, VIEW, 1.6), 1);
+});
+
+test('fitScale picks the in-between zoom for a medium panel', () => {
+  assert.equal(fitScale({ x: 0, y: 0, width: 960, height: 300 }, VIEW, 1.6), 1.6);
+  assert.equal(fitScale({ x: 0, y: 0, width: 1200, height: 300 }, VIEW, 1.6), 1.28);
 });

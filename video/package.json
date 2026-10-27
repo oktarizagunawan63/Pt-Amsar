@@ -11,11 +11,14 @@
   "dependencies": {
     "@remotion/cli": "4.0.539",
     "@remotion/google-fonts": "4.0.539",
+    "@remotion/studio": "4.0.539",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "remotion": "4.0.539"
   },
   "devDependencies": {
+    "@remotion/bundler": "4.0.539",
+    "@remotion/renderer": "4.0.539",
     "@types/node": "22.20.5",
     "@types/react": "18.3.31",
     "playwright": "1.64.1",

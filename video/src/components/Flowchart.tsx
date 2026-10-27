@@ -7,7 +7,7 @@ export interface FlowNode {
 }
 
 const NODE_W = 330;
-const NODE_H = 120;
+const NODE_H = 132;
 const GAP_X = 84;
 const GAP_Y = 76;
 const PER_ROW = 4;

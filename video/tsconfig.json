@@ -8,7 +8,15 @@
     "noEmit": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "types": [
+      "node",
+      "react"
+    ]
   },
-  "include": ["src", "capture", "test"]
+  "include": [
+    "src",
+    "capture",
+    "test"
+  ]
 }

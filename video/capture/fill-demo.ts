@@ -50,7 +50,7 @@ async function contractPdf(browser: Browser, projectName: string): Promise<Blob>
     <p>Dokumen contoh untuk video demo PT Amsar Dashboard.</p></body>`);
   const pdf = await page.pdf({ format: 'A4' });
   await page.close();
-  return new Blob([pdf], { type: 'application/pdf' });
+  return new Blob([new Uint8Array(pdf)], { type: 'application/pdf' });
 }
 
 /**

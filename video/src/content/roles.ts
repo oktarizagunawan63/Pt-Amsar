@@ -4,6 +4,15 @@ import type { Role, RoleId } from './types.ts';
 // Highlight locators are checked against the live app by capture/capture.ts (it fails if one
 // doesn't resolve to a visible element).
 
+const escapeRegex = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const hasClass = (name: string): string => `contains(concat(" ", normalize-space(@class), " "), " ${name} ")`;
+// The app's panels are either Tailwind `rounded-*` boxes or its own `.card` / `.project-card` classes.
+const CONTAINER = `ancestor::*[contains(@class, "rounded") or ${hasClass('card')} or ${hasClass('project-card')}][1]`;
+
+/** Locator for the nearest card/panel around the first visible element with this text. */
+const card = (text: string, partial = false): string =>
+  `main >> text=${partial ? `/${escapeRegex(text)}/` : `"${text}"`} >> visible=true >> nth=0 >> xpath=${CONTAINER}`;
+
 export const ROLES: Role[] = [
   {
     id: 'sales',
@@ -17,14 +26,14 @@ export const ROLES: Role[] = [
     durationSec: 55,
     menu: ['Dashboard', 'Customer', 'Plan Visit', 'Realisasi Visit', 'Laporan Visit', 'Sales Funnel', 'Absensi'],
     shots: [
-      { id: 'dashboard', route: '/sales/dashboard', caption: 'Dashboard pribadi: target, kunjungan, dan funnel milik Sales', highlight: 'main >> h1' },
-      { id: 'attendance', route: '/attendance', caption: 'Absensi harian dengan GPS dan foto', highlight: 'main >> h1' },
-      { id: 'customers', route: '/customers', caption: 'Sales menambah customer baru (disetujui Sales Manager)', highlight: 'main >> h1' },
-      { id: 'plan-visits', route: '/plan-visits', caption: 'Rencana kunjungan ke customer', highlight: 'main >> h1' },
-      { id: 'realisasi', route: '/realisasi-visits', caption: 'Realisasi kunjungan: selesai atau terlewat', highlight: 'main >> h1' },
-      { id: 'unplanned', route: '/create-unplanned-visit', caption: 'Kunjungan dadakan, menunggu persetujuan manager', highlight: 'main >> h1' },
-      { id: 'funnels', route: '/funnels', caption: 'Sales funnel: prospek → qualified → proposal → negosiasi → closing', highlight: 'main >> h1' },
-      { id: 'funnel-detail', route: '/funnels/:id', caption: 'Riwayat aktivitas sampai deal WON', highlight: 'main >> h1' },
+      { id: 'dashboard', route: '/sales/dashboard', caption: 'Dashboard pribadi: target, jadwal kunjungan, dan customer', highlight: card('Target bulan ini') },
+      { id: 'attendance', route: '/attendance', caption: 'Absensi harian dengan GPS dan foto', highlight: card('Lokasi Check-in Hari Ini') },
+      { id: 'customers', route: '/customers', caption: 'Sales menambah customer baru (disetujui Sales Manager)', highlight: 'role=button[name="Tambah Customer"]' },
+      { id: 'plan-visits', route: '/plan-visits', caption: 'Rencana kunjungan ke customer', highlight: 'role=button[name="Tambah Plan Visit"]' },
+      { id: 'realisasi', route: '/realisasi-visits', caption: 'Realisasi kunjungan: mulai visit atau tandai terlewat', highlight: 'xpath=(//main//button[contains(., "Mulai Visit")])[1]/ancestor::tr[1]' },
+      { id: 'unplanned', route: '/create-unplanned-visit', caption: 'Kunjungan dadakan, menunggu persetujuan manager', highlight: card('2. Detail Kunjungan') },
+      { id: 'funnels', route: '/funnels', caption: 'Sales funnel: prospek → qualified → proposal → negosiasi → closing', highlight: 'xpath=(//main//table)[1]' },
+      { id: 'funnel-detail', route: '/funnels/:id', caption: 'Deal WON tercatat lengkap: nilai, alasan, dan tanggal', highlight: card('Deal Menang!') },
     ],
   },
   {
@@ -39,13 +48,13 @@ export const ROLES: Role[] = [
     durationSec: 50,
     menu: ['Dashboard', 'Customer', 'Plan Visit', 'Realisasi Visit', 'Laporan Visit', 'Peringatan', 'Sales Funnel', 'Absensi'],
     shots: [
-      { id: 'dashboard', route: '/manager/dashboard', caption: 'Kinerja seluruh tim sales', highlight: 'main >> h1' },
-      { id: 'customers', route: '/customers', caption: 'Menyetujui atau menolak customer baru', highlight: 'main >> h1' },
-      { id: 'plan-visits', route: '/plan-visits', caption: 'Menyetujui rencana kunjungan', highlight: 'main >> h1' },
-      { id: 'realisasi', route: '/realisasi-visits', caption: 'Menyetujui kunjungan dadakan', highlight: 'main >> h1' },
-      { id: 'visit-reports', route: '/visit-reports', caption: 'Laporan kunjungan tim', highlight: 'main >> h1' },
-      { id: 'warnings', route: '/warnings', caption: 'Peringatan otomatis saat kunjungan terlewat', highlight: 'main >> h1' },
-      { id: 'funnels', route: '/funnels', caption: 'Memantau funnel seluruh tim', highlight: 'main >> h1' },
+      { id: 'dashboard', route: '/manager/dashboard', caption: 'Kinerja tim dan kunjungan yang menunggu persetujuan', highlight: card('Menunggu persetujuan') },
+      { id: 'customers', route: '/customers', caption: 'Melihat dan mengelola customer seluruh tim', highlight: 'xpath=(//main//table)[1]' },
+      { id: 'plan-visits', route: '/plan-visits', caption: 'Memantau rencana kunjungan tim per status', highlight: 'main >> text=/Belum Direalisasi/ >> visible=true >> nth=0 >> xpath=..' },
+      { id: 'realisasi', route: '/realisasi-visits', caption: 'Antrian persetujuan kunjungan dadakan', highlight: 'main >> text=/Unplanned Approval/ >> visible=true >> nth=0' },
+      { id: 'visit-reports', route: '/visit-reports', caption: 'Laporan kunjungan tim per periode, bisa diekspor', highlight: card('Data Per Periode') },
+      { id: 'warnings', route: '/warnings', caption: 'Peringatan otomatis saat kunjungan terlewat', highlight: 'main >> article >> nth=0' },
+      { id: 'funnels', route: '/funnels', caption: 'Memantau funnel seluruh tim', highlight: 'xpath=(//main//table)[1]' },
     ],
   },
   {
@@ -60,11 +69,11 @@ export const ROLES: Role[] = [
     durationSec: 45,
     menu: ['Dashboard', 'Proyek', 'Dokumen', 'Laporan'],
     shots: [
-      { id: 'dashboard', route: '/site/dashboard', caption: 'Status semua proyek: on track, at risk, delayed, completed', highlight: 'main >> h1' },
-      { id: 'projects', route: '/projects', caption: 'Daftar proyek, termasuk yang otomatis dibuat dari deal WON', highlight: 'main >> h1' },
-      { id: 'project-detail', route: '/projects/:id', caption: 'Assign engineer ke proyek', highlight: 'main >> h1' },
-      { id: 'documents', route: '/documents', caption: 'Dokumen proyek terpusat', highlight: 'main >> h1' },
-      { id: 'reports', route: '/reports', caption: 'Laporan proyek dan RAB', highlight: 'main >> h1' },
+      { id: 'dashboard', route: '/site/dashboard', caption: 'Kesehatan semua proyek: tepat waktu, berisiko, terlambat', highlight: card('Proyek berjalan') },
+      { id: 'projects', route: '/projects', caption: 'Daftar proyek, termasuk yang otomatis dibuat dari deal WON', highlight: card('[FUNNEL]', true) },
+      { id: 'project-detail', route: '/projects/:id', caption: 'Site Manager menugaskan engineer dan merencanakan material', highlight: card('Material Terpasang') },
+      { id: 'documents', route: '/documents', caption: 'Dokumen proyek terpusat', highlight: card('Surat Perintah Kerja', true) },
+      { id: 'reports', route: '/reports', caption: 'Laporan & analitik: progress dan RAB per proyek', highlight: card('Progress per Proyek (%)') },
     ],
   },
   {
@@ -79,10 +88,10 @@ export const ROLES: Role[] = [
     durationSec: 40,
     menu: ['Dashboard', 'Proyek Saya', 'Laporan Progress'],
     shots: [
-      { id: 'dashboard', route: '/engineer/dashboard', caption: 'Ringkasan proyek yang ditugaskan', highlight: 'main >> h1' },
-      { id: 'projects', route: '/engineer/projects', caption: 'Hanya proyek yang di-assign ke engineer ini', highlight: 'main >> h1' },
-      { id: 'project-detail', route: '/engineer/projects/:id', caption: 'Material dan RAB proyek', highlight: 'main >> h1' },
-      { id: 'progress', route: '/engineer/progress-reports', caption: 'Mengirim laporan progress ke Site Manager', highlight: 'main >> h1' },
+      { id: 'dashboard', route: '/engineer/dashboard', caption: 'Ringkasan proyek yang ditugaskan', highlight: card('Proyek saya') },
+      { id: 'projects', route: '/engineer/projects', caption: 'Hanya proyek yang di-assign ke engineer ini', highlight: card('Daftar Proyek') },
+      { id: 'project-detail', route: '/engineer/projects/:id', caption: 'Material terpasang dan RAB proyek', highlight: card('Material Terpasang') },
+      { id: 'progress', route: '/engineer/progress-reports', caption: 'Riwayat laporan progress lengkap dengan foto', highlight: card('Riwayat Laporan') },
     ],
   },
   {
@@ -100,10 +109,10 @@ export const ROLES: Role[] = [
       'Peringatan', 'Sales Funnel', 'Manajemen User', 'Monitor Absensi', 'Log Aktivitas',
     ],
     shots: [
-      { id: 'dashboard', route: '/dashboard', caption: 'Ringkasan seluruh perusahaan', highlight: 'main >> h1' },
-      { id: 'users', route: '/users', caption: 'Menyetujui akun baru dan mengatur role', highlight: 'main >> h1' },
-      { id: 'attendance-monitor', route: '/admin/attendance-monitor', caption: 'Memantau absensi semua karyawan', highlight: 'main >> h1' },
-      { id: 'activity', route: '/activity', caption: 'Log aktivitas: siapa melakukan apa', highlight: 'main >> h1' },
+      { id: 'dashboard', route: '/dashboard', caption: 'Ringkasan perusahaan dan hal yang perlu perhatian', highlight: card('Perlu perhatian') },
+      { id: 'users', route: '/users', caption: 'Kelola semua akun dan role pengguna', highlight: 'xpath=(//main//tr[contains(., "Fajar Nugroho")])[1]' },
+      { id: 'attendance-monitor', route: '/admin/attendance-monitor', caption: 'Memantau absensi semua karyawan', highlight: card('Data Kehadiran', true) },
+      { id: 'activity', route: '/activity', caption: 'Log aktivitas: siapa melakukan apa, kapan', highlight: 'xpath=(//main//table)[1]' },
       { id: 'all-access', route: '/dashboard', caption: 'Akses penuh ke semua modul', highlight: 'nav' },
     ],
   },

@@ -7,6 +7,7 @@ use App\Models\PlanVisit;
 use App\Models\ProjectNotification;
 use App\Models\User;
 use App\Models\Warning;
+use App\Services\MissedVisitRecorder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -365,56 +366,8 @@ class RealisasiVisitController extends Controller
                 ], 422);
             }
             
-            $realisasiVisit = RealisasiVisit::create([
-                'plan_visit_id' => $planVisitId,
-                'type'          => 'planned',
-                'status'        => 'missed',
-                'visit_time'    => null,
-                'notes'         => 'Visit marked as missed',
-                'visited_by'    => Auth::id(),
-            ]);
+            $realisasiVisit = app(MissedVisitRecorder::class)->record($planVisit, Auth::id());
 
-            $warningData = [
-                'title' => 'Visit Terlewat',
-                'message' => "Visit ke " . ($planVisit->customer->name ?? 'customer') . " pada {$planVisit->tanggal_visit} ditandai terlewat.",
-                'is_read' => false,
-            ];
-
-            if (Schema::hasColumn('warnings', 'priority')) {
-                $warningData['priority'] = 'high';
-            }
-
-            if (Schema::hasColumn('warnings', 'status')) {
-                $warningData['status'] = 'unread';
-            }
-
-            Warning::updateOrCreate(
-                [
-                    'type' => 'missed_visit',
-                    'plan_visit_id' => $planVisit->id,
-                    'user_id' => $planVisit->assigned_to ?: Auth::id(),
-                ],
-                $warningData
-            );
-
-            // NOTIFIKASI: beri tahu Sales dan Sales Manager
-            $customerName = $planVisit->customer->name ?? 'Customer';
-            $visitDate    = $planVisit->tanggal_visit;
-
-            // Notif ke sales yang ditugaskan
-            if ($planVisit->assigned_to) {
-                sendVisitNotif($planVisit->assigned_to, 'deadline_warning',
-                    'Kunjungan Terlewat',
-                    "Kunjungan ke {$customerName} pada {$visitDate} telah ditandai sebagai TERLEWAT.");
-            }
-            // Notif ke Sales Manager / Admin
-            $managers = User::whereIn('role', ['sales_manager', 'administrator'])->get();
-            foreach ($managers as $mgr) {
-                sendVisitNotif($mgr->id, 'deadline_warning',
-                    'Kunjungan Terlewat',
-                    "Kunjungan ke {$customerName} ({$visitDate}) oleh " . (User::find($planVisit->assigned_to)?->name ?? '-') . " telah ditandai TERLEWAT.");
-            }
-            
             return response()->json([
                 'success' => true,
                 'message' => 'Visit berhasil ditandai sebagai missed',

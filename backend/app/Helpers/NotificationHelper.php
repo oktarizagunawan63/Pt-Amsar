@@ -8,6 +8,14 @@ use App\Models\Project;
 
 class NotificationHelper
 {
+    /** Deadline and budget alerts fire from the daily job and from project edits; once a day is enough. */
+    private static function notifiedToday(int $projectId, int $userId, string $type): bool
+    {
+        return ProjectNotification::where(['project_id' => $projectId, 'user_id' => $userId, 'type' => $type])
+            ->whereDate('created_at', now()->toDateString())
+            ->exists();
+    }
+
     /**
      * Notify when a new project is created
      */
@@ -69,11 +77,14 @@ class NotificationHelper
      */
     public static function deadlineApproaching($project)
     {
-        $usersToNotify = User::whereIn('role', ['site_manager', 'admin'])->get();
-        
-        $daysLeft = now()->diffInDays($project->end_date, false);
-        
+        $usersToNotify = User::whereIn('role', ['site_manager', 'administrator'])->get();
+
+        $daysLeft = (int) now()->startOfDay()->diffInDays($project->end_date, false);
+
         foreach ($usersToNotify as $user) {
+            if (self::notifiedToday($project->id, $user->id, 'deadline_warning')) {
+                continue;
+            }
             ProjectNotification::create([
                 'project_id' => $project->id,
                 'user_id' => $user->id,
@@ -229,6 +240,9 @@ class NotificationHelper
         $overAmount = ($project->rab_realisasi ?? 0) - ($project->rab ?? 0);
         
         foreach ($managers as $manager) {
+            if (self::notifiedToday($project->id, $manager->id, 'over_budget')) {
+                continue;
+            }
             ProjectNotification::create([
                 'project_id' => $project->id,
                 'user_id' => $manager->id,
